@@ -194,11 +194,12 @@ const App = (() => {
     const first = rows.filter(r => r.readyForFirstPhase === 'מתאים').length;
     const openActions = state.actions.filter(a => a.status !== 'סגור').length;
     const photos = state.photos.length;
+    const kpiColors = ['','accent','primary','accent','danger','primary','warning','muted'];
     const kpis = [
       ['סה״כ דירות', total], ['סקרים הושלמו', completed], ['מוכנים לביצוע', ready], ['מוכנים בתנאים', conditional],
       ['לא מוכנים', notReady], ['מתאימים לפעימה ראשונה', first], ['משימות פתוחות', openActions], ['תמונות', photos]
     ];
-    qs('#kpiGrid').innerHTML = kpis.map(([t,v]) => `<div class="kpi"><span>${esc(t)}</span><strong>${esc(v)}</strong></div>`).join('');
+    qs('#kpiGrid').innerHTML = kpis.map(([t,v],i) => `<div class="kpi ${kpiColors[i]||''}""><span>${esc(t)}</span><strong>${esc(v)}</strong></div>`).join('');
     renderBarChart('#readinessChart', rows, 'executionReadinessStatus');
     renderBarChart('#statusChart', rows, 'surveyStatus');
     renderBarChart('#decisionChart', rows, 'decisionRequiredBy');

@@ -4,257 +4,306 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>סקר ממ״דים | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="appShell">
+
+      <!-- ── Sidebar ── -->
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">מ</div>
           <div>
             <h1>סקר ממ״דים</h1>
-            <p>ניהול שטח, תשתיות וביצוע</p>
+            <p>ניהול שטח ותשתיות</p>
           </div>
         </div>
+
         <nav>
-          <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-          <button class="nav-btn" data-view="apartments">דירות / מבנים</button>
-          <button class="nav-btn" data-view="survey">טופס סקר</button>
-          <button class="nav-btn" data-view="photos">תמונות</button>
-          <button class="nav-btn" data-view="actions">משימות</button>
-          <button class="nav-btn" data-view="settings">הגדרות</button>
+          <span class="nav-label">ניהול</span>
+          <button class="nav-btn active" data-view="dashboard">
+            <span class="nav-icon">📊</span>Dashboard
+          </button>
+          <button class="nav-btn" data-view="apartments">
+            <span class="nav-icon">🏢</span>דירות / מבנים
+          </button>
+          <button class="nav-btn" data-view="survey">
+            <span class="nav-icon">📋</span>טופס סקר
+          </button>
+          <span class="nav-label">תוכן</span>
+          <button class="nav-btn" data-view="photos">
+            <span class="nav-icon">📷</span>תמונות
+          </button>
+          <button class="nav-btn" data-view="actions">
+            <span class="nav-icon">✅</span>משימות
+          </button>
+          <span class="nav-label">מערכת</span>
+          <button class="nav-btn" data-view="settings">
+            <span class="nav-icon">⚙️</span>הגדרות
+          </button>
         </nav>
+
         <div class="side-footer">
           <span id="connectionDot" class="dot warning"></span>
           <span id="connectionText">לא נטען</span>
         </div>
       </aside>
 
+      <!-- ── Main ── -->
       <main class="main">
         <header class="topbar">
-          <div>
+          <div class="topbar-left">
             <h2 id="pageTitle">Dashboard</h2>
             <p id="pageSubtitle">תמונת מצב מלאה לפי מבנה, דירה, חסמים ומוכנות לביצוע</p>
           </div>
           <div class="top-actions">
-            <button class="btn ghost" id="refreshBtn">רענון</button>
+            <button class="btn ghost" id="refreshBtn">↻ רענון</button>
             <button class="btn secondary" id="exportCsvBtn">ייצוא CSV</button>
-            <button class="btn primary" id="newSurveyBtn">פתיחת סקר</button>
+            <button class="btn primary" id="newSurveyBtn">+ פתיחת סקר</button>
           </div>
         </header>
 
-        <section id="alertBox" class="alert hidden"></section>
+        <div class="content">
 
-        <section id="dashboardView" class="view active">
-          <div class="kpi-grid" id="kpiGrid"></div>
-          <div class="dashboard-grid">
-            <section class="card chart-card">
-              <div class="card-title"><h3>מוכנות לביצוע</h3></div>
-              <div id="readinessChart" class="bar-chart"></div>
-            </section>
-            <section class="card chart-card">
-              <div class="card-title"><h3>סטטוס סקר</h3></div>
-              <div id="statusChart" class="bar-chart"></div>
-            </section>
-            <section class="card chart-card">
-              <div class="card-title"><h3>החלטה נדרשת</h3></div>
-              <div id="decisionChart" class="bar-chart"></div>
-            </section>
-            <section class="card chart-card">
-              <div class="card-title"><h3>לפי אזור</h3></div>
-              <div id="areaChart" class="bar-chart"></div>
-            </section>
-          </div>
-          <section class="card">
-            <div class="card-title row-between">
-              <h3>טבלת ניהול מלאה</h3>
-              <span class="muted" id="dashboardCount"></span>
+          <section id="alertBox" class="alert hidden"></section>
+
+          <!-- ── Dashboard view ── -->
+          <section id="dashboardView" class="view active">
+            <div class="kpi-grid" id="kpiGrid"></div>
+
+            <div class="dashboard-grid">
+              <section class="card chart-card">
+                <div class="card-title"><h3>מוכנות לביצוע</h3></div>
+                <div id="readinessChart" class="bar-chart"></div>
+              </section>
+              <section class="card chart-card">
+                <div class="card-title"><h3>סטטוס סקר</h3></div>
+                <div id="statusChart" class="bar-chart"></div>
+              </section>
+              <section class="card chart-card">
+                <div class="card-title"><h3>החלטה נדרשת</h3></div>
+                <div id="decisionChart" class="bar-chart"></div>
+              </section>
+              <section class="card chart-card">
+                <div class="card-title"><h3>לפי אזור</h3></div>
+                <div id="areaChart" class="bar-chart"></div>
+              </section>
             </div>
-            <div class="filters compact">
-              <input id="dashboardSearch" placeholder="חיפוש מבנה / דירה / אזור / דייר" />
-              <select id="filterArea"><option value="">כל האזורים</option></select>
-              <select id="filterReadiness"><option value="">כל סטטוסי המוכנות</option></select>
-              <select id="filterSurveyStatus"><option value="">כל סטטוסי הסקר</option></select>
-              <select id="filterFirstPhase"><option value="">פעימה ראשונה - הכל</option></select>
-            </div>
-            <div class="table-wrap"><table id="dashboardTable"></table></div>
+
+            <section class="card">
+              <div class="card-title row-between">
+                <h3>טבלת ניהול מלאה</h3>
+                <span class="muted" id="dashboardCount"></span>
+              </div>
+              <div class="filters compact">
+                <input id="dashboardSearch" placeholder="🔍  חיפוש מבנה / דירה / אזור / דייר" />
+                <select id="filterArea"><option value="">כל האזורים</option></select>
+                <select id="filterReadiness"><option value="">כל סטטוסי המוכנות</option></select>
+                <select id="filterSurveyStatus"><option value="">כל סטטוסי הסקר</option></select>
+                <select id="filterFirstPhase"><option value="">פעימה ראשונה - הכל</option></select>
+              </div>
+              <div class="table-wrap"><table id="dashboardTable"></table></div>
+            </section>
           </section>
-        </section>
 
-        <section id="apartmentsView" class="view">
-          <section class="card">
-            <div class="card-title row-between">
-              <h3>דירות ומבנים ממקור המידע</h3>
-              <span id="apartmentsCount" class="muted"></span>
-            </div>
-            <div class="filters">
-              <input id="apartmentsSearch" placeholder="חיפוש לפי מבנה / דירה / אזור / דייר" />
-              <select id="apartmentsAreaFilter"><option value="">כל האזורים</option></select>
-            </div>
-            <div class="table-wrap"><table id="apartmentsTable"></table></div>
+          <!-- ── Apartments view ── -->
+          <section id="apartmentsView" class="view">
+            <section class="card">
+              <div class="card-title row-between">
+                <h3>דירות ומבנים ממקור המידע</h3>
+                <span id="apartmentsCount" class="muted"></span>
+              </div>
+              <div class="filters">
+                <input id="apartmentsSearch" placeholder="🔍  חיפוש לפי מבנה / דירה / אזור / דייר" />
+                <select id="apartmentsAreaFilter"><option value="">כל האזורים</option></select>
+              </div>
+              <div class="table-wrap"><table id="apartmentsTable"></table></div>
+            </section>
           </section>
-        </section>
 
-        <section id="surveyView" class="view">
-          <section class="card survey-card">
-            <div class="card-title row-between">
-              <div>
-                <h3>טופס סקר מבנה / דירה</h3>
-                <p class="muted">בחר דירה, מלא סטטוסים, העלה תמונות ושמור ישירות ל־Google Sheets + Drive.</p>
-              </div>
-              <button class="btn ghost" id="clearSurveyBtn">ניקוי טופס</button>
-            </div>
-            <form id="surveyForm" autocomplete="off">
-              <div class="form-grid">
-                <label>מבנה<select name="buildingNumber" id="buildingSelect" required></select></label>
-                <label>דירה / יחידה<select name="unitNumber" id="unitSelect" required></select></label>
-                <label>אזור<input name="area" id="areaInput" readonly /></label>
-                <label>דייר<input name="residentName" id="residentInput" readonly /></label>
-                <label>סוקר<input name="surveyor" id="surveyorInput" /></label>
-                <label>תאריך סקר<input name="surveyDate" type="date" /></label>
-                <label>סטטוס סקר<select name="surveyStatus" data-options="surveyStatus"></select></label>
-                <label>רמת מורכבות<select name="executionComplexity" data-options="complexity"></select></label>
-              </div>
-
-              <div class="plan-panel" id="planPanel"></div>
-
-              <div class="steps">
-                <button type="button" class="step-btn active" data-step="planning">מיקום ותכנון</button>
-                <button type="button" class="step-btn" data-step="access">גישה וכלים</button>
-                <button type="button" class="step-btn" data-step="infra">תשתיות</button>
-                <button type="button" class="step-btn" data-step="garden">נוי ופירוקים</button>
-                <button type="button" class="step-btn" data-step="interior">פנים וחריגים</button>
-                <button type="button" class="step-btn" data-step="resident">דיירים וסיכום</button>
-                <button type="button" class="step-btn" data-step="photosStep">תמונות</button>
-              </div>
-
-              <div class="step-panel active" data-panel="planning">
-                <div class="form-grid two">
-                  <label>תיאור מיקום ממ״ד מוצע<textarea name="proposedMamadLocation"></textarea></label>
-                  <label>הערות תכנוניות<textarea name="planningNotes"></textarea></label>
-                  <label>האם המיקום ישים בשטח?<select name="locationFeasible" data-options="yesNoCheck"></select></label>
-                  <label>האם נדרש שינוי מיקום?<select name="locationChangeRequired" data-options="yesNoCheck"></select></label>
+          <!-- ── Survey view ── -->
+          <section id="surveyView" class="view">
+            <section class="card survey-card">
+              <div class="card-title row-between">
+                <div>
+                  <h3>טופס סקר מבנה / דירה</h3>
+                  <p class="muted">בחר דירה, מלא סטטוסים, העלה תמונות ושמור ישירות ל־Google Sheets + Drive.</p>
                 </div>
+                <button class="btn ghost" id="clearSurveyBtn">ניקוי טופס</button>
               </div>
 
-              <div class="step-panel" data-panel="access">
-                <div class="form-grid two">
-                  <label>סטטוס גישה לכלים הנדסיים<select name="engineeringAccessStatus" data-options="access"></select></label>
-                  <label>נקודת כניסה מוצעת לכלים<textarea name="engineeringAccessPoint"></textarea></label>
-                  <label>נדרש פירוק/פינוי לטובת גישה?<select name="accessDemolitionRequired" data-options="yesNoCheck"></select></label>
-                  <label>מעבר דרך שטח פרטי / חצר?<select name="privateYardAccess" data-options="yesNoCheck"></select></label>
-                  <label>השפעת מדרכה / שביל<select name="sidewalkImpact" data-options="impact"></select></label>
-                  <label>הערות גישה<textarea name="accessNotes"></textarea></label>
+              <form id="surveyForm" autocomplete="off">
+                <div class="form-grid">
+                  <label>מבנה<select name="buildingNumber" id="buildingSelect" required></select></label>
+                  <label>דירה / יחידה<select name="unitNumber" id="unitSelect" required></select></label>
+                  <label>אזור<input name="area" id="areaInput" readonly /></label>
+                  <label>דייר<input name="residentName" id="residentInput" readonly /></label>
+                  <label>סוקר<input name="surveyor" id="surveyorInput" /></label>
+                  <label>תאריך סקר<input name="surveyDate" type="date" /></label>
+                  <label>סטטוס סקר<select name="surveyStatus" data-options="surveyStatus"></select></label>
+                  <label>רמת מורכבות<select name="executionComplexity" data-options="complexity"></select></label>
                 </div>
-              </div>
 
-              <div class="step-panel" data-panel="infra">
-                <div class="form-grid three">
-                  <label>חשמל<select name="electricityStatus" data-options="infraStatus"></select></label>
-                  <label>מים<select name="waterStatus" data-options="infraStatus"></select></label>
-                  <label>ביוב<select name="sewageStatus" data-options="infraStatus"></select></label>
-                  <label>ניקוז<select name="drainageStatus" data-options="infraStatus"></select></label>
-                  <label>תקשורת<select name="communicationStatus" data-options="infraStatus"></select></label>
-                  <label>גז<select name="gasStatus" data-options="infraStatus"></select></label>
-                  <label>מזגנים / צנרת מזגן<select name="acStatus" data-options="infraStatus"></select></label>
-                  <label>נדרש סקר תשתיות נוסף?<select name="infraSurveyRequired" data-options="yesNoCheck"></select></label>
-                  <label>גורם נדרש לבדיקה<select name="infraOwner" data-options="owner"></select></label>
+                <div class="plan-panel" id="planPanel"></div>
+
+                <div class="steps">
+                  <button type="button" class="step-btn active" data-step="planning">מיקום ותכנון</button>
+                  <button type="button" class="step-btn" data-step="access">גישה וכלים</button>
+                  <button type="button" class="step-btn" data-step="infra">תשתיות</button>
+                  <button type="button" class="step-btn" data-step="garden">נוי ופירוקים</button>
+                  <button type="button" class="step-btn" data-step="interior">פנים וחריגים</button>
+                  <button type="button" class="step-btn" data-step="resident">דיירים וסיכום</button>
+                  <button type="button" class="step-btn" data-step="photosStep">תמונות</button>
                 </div>
-                <label>הערות תשתיות<textarea name="infrastructureNotes"></textarea></label>
-              </div>
 
-              <div class="step-panel" data-panel="garden">
-                <div class="form-grid three">
-                  <label>השפעת צמחייה<select name="vegetationImpact" data-options="yesNoCheck"></select></label>
-                  <label>סוג צמחייה<select name="vegetationType" data-options="vegetation"></select></label>
-                  <label>פעולת נוי נדרשת<select name="vegetationAction" data-options="gardenAction"></select></label>
-                  <label>עץ מפריע לביצוע?<select name="treeImpact" data-options="yesNoCheck"></select></label>
-                  <label>נדרש אישור לטיפול בעץ?<select name="treePermitRequired" data-options="yesNoCheck"></select></label>
-                  <label>פרגולה<select name="pergolaAction" data-options="demolition"></select></label>
-                  <label>גדר / שער<select name="fenceGateAction" data-options="demolition"></select></label>
-                  <label>ארון חוץ / מחסן<select name="outdoorCabinetAction" data-options="demolition"></select></label>
-                  <label>מזגן חיצוני<select name="externalAcAction" data-options="demolition"></select></label>
-                  <label>חלון / סורג / תריס<select name="windowBarsShutterAction" data-options="demolition"></select></label>
-                </div>
-                <label>הערות נוי / פירוקים<textarea name="gardenDemolitionNotes"></textarea></label>
-              </div>
-
-              <div class="step-panel" data-panel="interior">
-                <div class="form-grid three">
-                  <label>נדרש שינוי מבני פנים?<select name="internalStructuralChange" data-options="yesNoCheck"></select></label>
-                  <label>סוג שינוי פנים<select name="interiorChangeType" data-options="interior"></select></label>
-                  <label>השפעה על מטבח?<select name="kitchenImpact" data-options="yesNoCheck"></select></label>
-                  <label>השפעה על פתח / חלון / דלת?<select name="openingWindowDoorImpact" data-options="yesNoCheck"></select></label>
-                  <label>דירה קטנה / חריגה תכנונית?<select name="smallApartmentFlag" data-options="yesNoCheck"></select></label>
-                  <label>השפעה על סיווג דירה?<select name="smallApartmentClassificationImpact" data-options="yesNoCheck"></select></label>
-                  <label>נדרשת החלטת ועדת תכנון?<select name="planningCommitteeDecisionRequired" data-options="yesNo"></select></label>
-                </div>
-                <label>תיאור שינויי פנים / חריגים<textarea name="interiorNotes"></textarea></label>
-              </div>
-
-              <div class="step-panel" data-panel="resident">
-                <div class="form-grid two">
-                  <label>התוכנית הוצגה לדייר?<select name="presentedToResident" data-options="yesNo"></select></label>
-                  <label>התקבלו הערות דייר?<select name="residentCommentsReceived" data-options="yesNo"></select></label>
-                  <label>הערות דייר<textarea name="residentComments"></textarea></label>
-                  <label>החלטת צוות לגבי ההערות<textarea name="residentCommentDecision"></textarea></label>
-                  <label>מתאים לפעימה ראשונה?<select name="readyForFirstPhase" data-options="firstPhase"></select></label>
-                  <label>סטטוס מוכנות לביצוע<select name="executionReadinessStatus" data-options="readiness"></select></label>
-                  <label>החלטה נדרשת על ידי<select name="decisionRequiredBy" data-options="decisionBy"></select></label>
-                  <label>חסמים פתוחים<textarea name="openBlockers"></textarea></label>
-                  <label>המלצת הסוקר<textarea name="surveyorRecommendation"></textarea></label>
-                </div>
-              </div>
-
-              <div class="step-panel" data-panel="photosStep">
-                <div class="upload-box">
-                  <div class="form-grid three">
-                    <label>סוג תמונה<select id="photoType" data-options="photoType"></select></label>
-                    <label>תיאור תמונה<input id="photoDescription" /></label>
-                    <label>בחירת תמונות<input id="photoFiles" type="file" accept="image/*" multiple /></label>
+                <div class="step-panel active" data-panel="planning">
+                  <div class="form-grid two">
+                    <label>תיאור מיקום ממ״ד מוצע<textarea name="proposedMamadLocation"></textarea></label>
+                    <label>הערות תכנוניות<textarea name="planningNotes"></textarea></label>
+                    <label>האם המיקום ישים בשטח?<select name="locationFeasible" data-options="yesNoCheck"></select></label>
+                    <label>האם נדרש שינוי מיקום?<select name="locationChangeRequired" data-options="yesNoCheck"></select></label>
                   </div>
-                  <p class="muted">מגבלת קובץ: 5MB לכל תמונה. התמונות נשמרות ב־Google Drive והקישורים נשמרים בגיליון.</p>
                 </div>
-                <div id="photoPreview" class="photo-preview"></div>
-              </div>
 
+                <div class="step-panel" data-panel="access">
+                  <div class="form-grid two">
+                    <label>סטטוס גישה לכלים הנדסיים<select name="engineeringAccessStatus" data-options="access"></select></label>
+                    <label>נקודת כניסה מוצעת לכלים<textarea name="engineeringAccessPoint"></textarea></label>
+                    <label>נדרש פירוק/פינוי לטובת גישה?<select name="accessDemolitionRequired" data-options="yesNoCheck"></select></label>
+                    <label>מעבר דרך שטח פרטי / חצר?<select name="privateYardAccess" data-options="yesNoCheck"></select></label>
+                    <label>השפעת מדרכה / שביל<select name="sidewalkImpact" data-options="impact"></select></label>
+                    <label>הערות גישה<textarea name="accessNotes"></textarea></label>
+                  </div>
+                </div>
+
+                <div class="step-panel" data-panel="infra">
+                  <div class="form-grid three">
+                    <label>חשמל<select name="electricityStatus" data-options="infraStatus"></select></label>
+                    <label>מים<select name="waterStatus" data-options="infraStatus"></select></label>
+                    <label>ביוב<select name="sewageStatus" data-options="infraStatus"></select></label>
+                    <label>ניקוז<select name="drainageStatus" data-options="infraStatus"></select></label>
+                    <label>תקשורת<select name="communicationStatus" data-options="infraStatus"></select></label>
+                    <label>גז<select name="gasStatus" data-options="infraStatus"></select></label>
+                    <label>מזגנים / צנרת מזגן<select name="acStatus" data-options="infraStatus"></select></label>
+                    <label>נדרש סקר תשתיות נוסף?<select name="infraSurveyRequired" data-options="yesNoCheck"></select></label>
+                    <label>גורם נדרש לבדיקה<select name="infraOwner" data-options="owner"></select></label>
+                  </div>
+                  <label>הערות תשתיות<textarea name="infrastructureNotes"></textarea></label>
+                </div>
+
+                <div class="step-panel" data-panel="garden">
+                  <div class="form-grid three">
+                    <label>השפעת צמחייה<select name="vegetationImpact" data-options="yesNoCheck"></select></label>
+                    <label>סוג צמחייה<select name="vegetationType" data-options="vegetation"></select></label>
+                    <label>פעולת נוי נדרשת<select name="vegetationAction" data-options="gardenAction"></select></label>
+                    <label>עץ מפריע לביצוע?<select name="treeImpact" data-options="yesNoCheck"></select></label>
+                    <label>נדרש אישור לטיפול בעץ?<select name="treePermitRequired" data-options="yesNoCheck"></select></label>
+                    <label>פרגולה<select name="pergolaAction" data-options="demolition"></select></label>
+                    <label>גדר / שער<select name="fenceGateAction" data-options="demolition"></select></label>
+                    <label>ארון חוץ / מחסן<select name="outdoorCabinetAction" data-options="demolition"></select></label>
+                    <label>מזגן חיצוני<select name="externalAcAction" data-options="demolition"></select></label>
+                    <label>חלון / סורג / תריס<select name="windowBarsShutterAction" data-options="demolition"></select></label>
+                  </div>
+                  <label>הערות נוי / פירוקים<textarea name="gardenDemolitionNotes"></textarea></label>
+                </div>
+
+                <div class="step-panel" data-panel="interior">
+                  <div class="form-grid three">
+                    <label>נדרש שינוי מבני פנים?<select name="internalStructuralChange" data-options="yesNoCheck"></select></label>
+                    <label>סוג שינוי פנים<select name="interiorChangeType" data-options="interior"></select></label>
+                    <label>השפעה על מטבח?<select name="kitchenImpact" data-options="yesNoCheck"></select></label>
+                    <label>השפעה על פתח / חלון / דלת?<select name="openingWindowDoorImpact" data-options="yesNoCheck"></select></label>
+                    <label>דירה קטנה / חריגה תכנונית?<select name="smallApartmentFlag" data-options="yesNoCheck"></select></label>
+                    <label>השפעה על סיווג דירה?<select name="smallApartmentClassificationImpact" data-options="yesNoCheck"></select></label>
+                    <label>נדרשת החלטת ועדת תכנון?<select name="planningCommitteeDecisionRequired" data-options="yesNo"></select></label>
+                  </div>
+                  <label>תיאור שינויי פנים / חריגים<textarea name="interiorNotes"></textarea></label>
+                </div>
+
+                <div class="step-panel" data-panel="resident">
+                  <div class="form-grid two">
+                    <label>התוכנית הוצגה לדייר?<select name="presentedToResident" data-options="yesNo"></select></label>
+                    <label>התקבלו הערות דייר?<select name="residentCommentsReceived" data-options="yesNo"></select></label>
+                    <label>הערות דייר<textarea name="residentComments"></textarea></label>
+                    <label>החלטת צוות לגבי ההערות<textarea name="residentCommentDecision"></textarea></label>
+                    <label>מתאים לפעימה ראשונה?<select name="readyForFirstPhase" data-options="firstPhase"></select></label>
+                    <label>סטטוס מוכנות לביצוע<select name="executionReadinessStatus" data-options="readiness"></select></label>
+                    <label>החלטה נדרשת על ידי<select name="decisionRequiredBy" data-options="decisionBy"></select></label>
+                    <label>חסמים פתוחים<textarea name="openBlockers"></textarea></label>
+                    <label>המלצת הסוקר<textarea name="surveyorRecommendation"></textarea></label>
+                  </div>
+                </div>
+
+                <div class="step-panel" data-panel="photosStep">
+                  <div class="upload-box">
+                    <div class="form-grid three">
+                      <label>סוג תמונה<select id="photoType" data-options="photoType"></select></label>
+                      <label>תיאור תמונה<input id="photoDescription" /></label>
+                      <label>בחירת תמונות<input id="photoFiles" type="file" accept="image/*" multiple /></label>
+                    </div>
+                    <p class="muted" style="margin-top:8px">מגבלת קובץ: 5MB לכל תמונה. התמונות נשמרות ב־Google Drive והקישורים נשמרים בגיליון.</p>
+                  </div>
+                  <div id="photoPreview" class="photo-preview"></div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn primary" id="saveSurveyBtn">💾 שמירת סקר</button>
+                  <span id="saveStatus" class="muted"></span>
+                </div>
+              </form>
+            </section>
+          </section>
+
+          <!-- ── Photos view ── -->
+          <section id="photosView" class="view">
+            <section class="card">
+              <div class="card-title"><h3>תמונות סקר</h3></div>
+              <div class="filters">
+                <input id="photosSearch" placeholder="🔍  חיפוש לפי מבנה / סוג תמונה / תיאור" />
+              </div>
+              <div id="photosGrid" class="photos-grid"></div>
+            </section>
+          </section>
+
+          <!-- ── Actions view ── -->
+          <section id="actionsView" class="view">
+            <section class="card">
+              <div class="card-title row-between">
+                <h3>משימות פתוחות</h3>
+                <button class="btn secondary" id="addActionBtn">+ הוספת משימה</button>
+              </div>
+              <div class="table-wrap"><table id="actionsTable"></table></div>
+            </section>
+          </section>
+
+          <!-- ── Settings view ── -->
+          <section id="settingsView" class="view">
+            <section class="card">
+              <div class="card-title">
+                <h3>הגדרות Frontend</h3>
+                <p class="muted">חיבור ל־Apps Script Backend</p>
+              </div>
+              <div class="form-grid two">
+                <label>Apps Script Web App URL
+                  <input id="backendUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+                </label>
+                <label>API Key
+                  <input id="apiKeyInput" placeholder="אותו ערך שמוגדר בגיליון הגדרות" />
+                </label>
+              </div>
               <div class="form-actions">
-                <button type="submit" class="btn primary" id="saveSurveyBtn">שמירת סקר</button>
-                <span id="saveStatus" class="muted"></span>
+                <button class="btn primary" id="saveSettingsBtn">שמירת הגדרות בדפדפן</button>
+                <button class="btn ghost" id="testConnectionBtn">בדיקת חיבור</button>
               </div>
-            </form>
+              <p class="muted" style="margin-top:12px">
+                ההגדרות נשמרות ב־LocalStorage של הדפדפן. לפריסה קבועה ניתן לערוך את הקובץ <code>config.js</code>.
+              </p>
+            </section>
           </section>
-        </section>
 
-        <section id="photosView" class="view">
-          <section class="card">
-            <div class="card-title"><h3>תמונות סקר</h3></div>
-            <div class="filters"><input id="photosSearch" placeholder="חיפוש לפי מבנה / סוג תמונה / תיאור" /></div>
-            <div id="photosGrid" class="photos-grid"></div>
-          </section>
-        </section>
-
-        <section id="actionsView" class="view">
-          <section class="card">
-            <div class="card-title row-between"><h3>משימות פתוחות</h3><button class="btn secondary" id="addActionBtn">הוספת משימה</button></div>
-            <div class="table-wrap"><table id="actionsTable"></table></div>
-          </section>
-        </section>
-
-        <section id="settingsView" class="view">
-          <section class="card">
-            <div class="card-title"><h3>הגדרות Frontend</h3></div>
-            <div class="form-grid two">
-              <label>Apps Script Web App URL<input id="backendUrlInput" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-              <label>API Key<input id="apiKeyInput" placeholder="אותו ערך שמוגדר בגיליון הגדרות" /></label>
-            </div>
-            <div class="form-actions">
-              <button class="btn primary" id="saveSettingsBtn">שמירת הגדרות בדפדפן</button>
-              <button class="btn ghost" id="testConnectionBtn">בדיקת חיבור</button>
-            </div>
-            <p class="muted">ההגדרות נשמרות ב־LocalStorage של הדפדפן. לפריסה קבועה ניתן לערוך את הקובץ <code>config.js</code>.</p>
-          </section>
-        </section>
+        </div><!-- /content -->
       </main>
     </div>
 
