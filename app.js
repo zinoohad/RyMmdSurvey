@@ -128,7 +128,7 @@ const App = (() => {
       Object.entries(fields).forEach(([name, value]) => {
         const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input);
       });
-      const timer = setTimeout(() => { cleanup(); reject(new Error('שמירה נכשלה או לא התקבלה תשובה בזמן')); }, 60000);
+      const timer = setTimeout(() => { cleanup(); reject(new Error('השמירה כנראה בוצעה, אבל לא התקבלה תשובה מהשרת בזמן. רענן נתונים ובדוק את הרשומה.')); }, 120000);
       function listener(ev) {
         if (!ev.data || ev.data.type !== 'MAMAD_APPS_SCRIPT_RESPONSE' || ev.data.requestId !== requestId) return;
         cleanup();
