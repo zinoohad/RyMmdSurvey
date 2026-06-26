@@ -165,6 +165,10 @@
                     <label>האם המיקום ישים בשטח?<select name="locationFeasible" data-options="yesNoCheck"></select></label>
                     <label>האם נדרש שינוי מיקום?<select name="locationChangeRequired" data-options="yesNoCheck"></select></label>
                   </div>
+                  <div class="step-photos" data-photo-section="planning">
+                    <div class="step-photos-title">תמונות מיקום ותכנון</div>
+                    <div id="planningPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="step-panel" data-panel="access">
@@ -175,6 +179,10 @@
                     <label>מעבר דרך שטח פרטי / חצר?<select name="privateYardAccess" data-options="yesNoCheck"></select></label>
                     <label>השפעת מדרכה / שביל<select name="sidewalkImpact" data-options="impact"></select></label>
                     <label>הערות גישה<textarea name="accessNotes"></textarea></label>
+                  </div>
+                  <div class="step-photos" data-photo-section="access">
+                    <div class="step-photos-title">תמונות גישה וכלים</div>
+                    <div id="accessPhotos" class="inline-photos-grid"></div>
                   </div>
                 </div>
 
@@ -191,6 +199,10 @@
                     <label>גורם נדרש לבדיקה<select name="infraOwner" data-options="owner"></select></label>
                   </div>
                   <label>הערות תשתיות<textarea name="infrastructureNotes"></textarea></label>
+                  <div class="step-photos" data-photo-section="infra">
+                    <div class="step-photos-title">תמונות תשתיות</div>
+                    <div id="infraPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="step-panel" data-panel="garden">
@@ -207,6 +219,10 @@
                     <label>חלון / סורג / תריס<select name="windowBarsShutterAction" data-options="demolition"></select></label>
                   </div>
                   <label>הערות נוי / פירוקים<textarea name="gardenDemolitionNotes"></textarea></label>
+                  <div class="step-photos" data-photo-section="garden">
+                    <div class="step-photos-title">תמונות נוי ופירוקים</div>
+                    <div id="gardenPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="step-panel" data-panel="interior">
@@ -220,6 +236,10 @@
                     <label>נדרשת החלטת ועדת תכנון?<select name="planningCommitteeDecisionRequired" data-options="yesNo"></select></label>
                   </div>
                   <label>תיאור שינויי פנים / חריגים<textarea name="interiorNotes"></textarea></label>
+                  <div class="step-photos" data-photo-section="interior">
+                    <div class="step-photos-title">תמונות פנים וחריגים</div>
+                    <div id="interiorPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="step-panel" data-panel="resident">
@@ -234,6 +254,10 @@
                     <label>חסמים פתוחים<textarea name="openBlockers"></textarea></label>
                     <label>המלצת הסוקר<textarea name="surveyorRecommendation"></textarea></label>
                   </div>
+                  <div class="step-photos" data-photo-section="other">
+                    <div class="step-photos-title">תמונות כלליות / אחרות</div>
+                    <div id="otherPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="step-panel" data-panel="photosStep">
@@ -246,6 +270,10 @@
                     <p class="muted" style="margin-top:8px">מגבלת קובץ: 5MB לכל תמונה. התמונות נשמרות ב־Google Drive והקישורים נשמרים בגיליון.</p>
                   </div>
                   <div id="photoPreview" class="photo-preview"></div>
+                  <div class="step-photos" data-photo-section="current">
+                    <div class="step-photos-title">תמונות קיימות לדירה / מבנה זה</div>
+                    <div id="currentSurveyPhotos" class="inline-photos-grid"></div>
+                  </div>
                 </div>
 
                 <div class="form-actions">

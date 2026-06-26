@@ -182,7 +182,7 @@ const App = (() => {
   function keyOf(b,u){ return `${String(b||'').trim()}-${String(u||'').trim()}`; }
   function countBy(arr, fn){ return arr.reduce((m,x)=>{ const k=fn(x); m[k]=(m[k]||0)+1; return m; },{}); }
 
-  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); }
+  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); renderSelectedApartmentPhotos(); }
 
   function renderDashboard() {
     const rows = state.dashboard;
@@ -258,11 +258,67 @@ const App = (() => {
     const photos = state.photos.filter(p => !s || [p.buildingNumber,p.unitNumber,p.photoType,p.photoDescription,p.fileName].join(' ').toLowerCase().includes(s));
     qs('#photosGrid').innerHTML = photos.length ? photos.map(p => `
       <a class="photo-card" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer">
-        <div class="photo-thumb">📷</div>
+        ${photoPreviewUrl(p) ? `<img class="photo-thumb-img" src="${esc(photoPreviewUrl(p))}" alt="${esc(p.photoDescription || p.fileName || 'תמונה')}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-thumb', textContent:'📷'}))">` : '<div class="photo-thumb">📷</div>'}
         <strong>מבנה ${esc(p.buildingNumber)} / דירה ${esc(p.unitNumber)}</strong>
         <span>${esc(p.photoType || 'תמונה')}</span>
         <small>${esc(p.photoDescription || p.fileName || '')}</small>
       </a>`).join('') : '<p class="muted">אין תמונות להצגה.</p>';
+  }
+
+  function getPhotoSection(photoType) {
+    const t = String(photoType || '').trim();
+    if (['מיקום ממ״ד', 'מיקום ממ"ד', 'תכנון', 'מיקום ותכנון'].includes(t)) return 'planning';
+    if (['גישה לכלים', 'ציר גישה', 'גישה', 'כלים הנדסיים'].includes(t)) return 'access';
+    if (['תשתיות', 'חשמל', 'מים', 'ביוב', 'ניקוז', 'תקשורת', 'גז'].includes(t)) return 'infra';
+    if (['נוי / עצים', 'נוי', 'עצים', 'פירוקים'].includes(t)) return 'garden';
+    if (['פנים הדירה', 'פנים', 'חריגים', 'פנים וחריגים'].includes(t)) return 'interior';
+    return 'other';
+  }
+
+  function selectedApartmentPhotos() {
+    const b = qs('#buildingSelect')?.value || state.selectedApartment?.buildingNumber;
+    const u = qs('#unitSelect')?.value || state.selectedApartment?.unitNumber;
+    if (!b || !u) return [];
+    return (state.photos || []).filter(p => String(p.buildingNumber) === String(b) && String(p.unitNumber) === String(u));
+  }
+
+  function renderSelectedApartmentPhotos() {
+    const photos = selectedApartmentPhotos();
+    const buckets = { planning: [], access: [], infra: [], garden: [], interior: [], other: [] };
+    photos.forEach(p => buckets[getPhotoSection(p.photoType)].push(p));
+
+    renderInlinePhotoBucket('#planningPhotos', buckets.planning, 'אין עדיין תמונות מיקום ותכנון לדירה זו.');
+    renderInlinePhotoBucket('#accessPhotos', buckets.access, 'אין עדיין תמונות גישה וכלים לדירה זו.');
+    renderInlinePhotoBucket('#infraPhotos', buckets.infra, 'אין עדיין תמונות תשתיות לדירה זו.');
+    renderInlinePhotoBucket('#gardenPhotos', buckets.garden, 'אין עדיין תמונות נוי / פירוקים לדירה זו.');
+    renderInlinePhotoBucket('#interiorPhotos', buckets.interior, 'אין עדיין תמונות פנים וחריגים לדירה זו.');
+    renderInlinePhotoBucket('#otherPhotos', buckets.other, 'אין עדיין תמונות כלליות / אחרות לדירה זו.');
+    renderInlinePhotoBucket('#currentSurveyPhotos', photos, 'אין עדיין תמונות לדירה זו.');
+  }
+
+  function renderInlinePhotoBucket(selector, photos, emptyText) {
+    const el = qs(selector);
+    if (!el) return;
+    el.innerHTML = photos.length ? photos.map(photoCardHtml).join('') : `<p class="muted inline-empty">${esc(emptyText)}</p>`;
+  }
+
+  function photoPreviewUrl(p) {
+    const id = p.driveFileId || p.fileId || p.drive_file_id || '';
+    if (id) return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w500`;
+    return '';
+  }
+
+  function photoCardHtml(p) {
+    const preview = photoPreviewUrl(p);
+    const title = p.photoDescription || p.fileName || p.photoType || 'תמונה';
+    return `
+      <a class="inline-photo-card" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer" title="${esc(title)}">
+        ${preview ? `<img src="${esc(preview)}" alt="${esc(title)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-fallback', textContent:'📷'}))">` : '<div class="photo-fallback">📷</div>'}
+        <div class="inline-photo-meta">
+          <strong>${esc(p.photoType || 'תמונה')}</strong>
+          <span>${esc(title)}</span>
+        </div>
+      </a>`;
   }
 
   function renderActions() {
@@ -296,6 +352,7 @@ const App = (() => {
     qs('#areaInput').value = r?.area || '';
     qs('#residentInput').value = r?.residentName || '';
     renderPlanPanel(r?.buildingNumber);
+    renderSelectedApartmentPhotos();
   }
 
   function renderPlanPanel(buildingNumber) {
@@ -324,7 +381,7 @@ const App = (() => {
   }
 
   function clearSurveyForm() {
-    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; populateSelectors();
+    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; populateSelectors(); renderSelectedApartmentPhotos();
   }
 
   async function saveSurvey(ev) {
@@ -361,6 +418,7 @@ const App = (() => {
       files: encoded.map(f => ({...f, photoType: qs('#photoType').value, description: qs('#photoDescription').value}))
     });
     input.value = ''; qs('#photoPreview').innerHTML = '';
+    renderSelectedApartmentPhotos();
   }
 
   function fileToDataUrl(file) {

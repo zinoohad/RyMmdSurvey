@@ -576,3 +576,79 @@ textarea { min-height: 84px; resize: vertical; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .top-actions { width: 100%; }
 }
+
+/* ── Inline photos inside survey steps ────────────────────────── */
+.step-photos {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.step-photos-title {
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.inline-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.inline-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.inline-photo-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 154px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.inline-photo-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.inline-photo-card img,
+.photo-thumb-img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  background: var(--surface3);
+}
+.photo-fallback {
+  height: 96px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-l);
+  font-size: 26px;
+}
+.inline-photo-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  font-size: 12px;
+}
+.inline-photo-meta strong {
+  color: var(--text);
+  line-height: 1.2;
+}
+.inline-photo-meta span {
+  color: var(--text2);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.photo-thumb-img {
+  height: 80px;
+  border-radius: var(--radius-sm);
+}
