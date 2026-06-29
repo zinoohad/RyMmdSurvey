@@ -110,16 +110,22 @@ const App = (() => {
   function normalizeApiPayload(res) {
     if (!res || typeof res !== 'object') return res;
 
-    // Apps Script older format: { ok:true, data:{...} }
-    // Apps Script newer format: { ok:true, exists:true, survey:{...} }
+    // Supported response formats:
+    // 1) { ok:true, data:{...} }
+    // 2) { ok:true, exists:true, survey:{...} }
+    // 3) Bad legacy nested format: { ok:true, survey:{ survey:{...}, photos:[], actions:[], history:{history:[]} } }
     const payload = Object.prototype.hasOwnProperty.call(res, 'data') && res.data && typeof res.data === 'object'
       ? res.data
       : res;
 
-    // Backward compatibility for the bad nested shape:
-    // { survey: { survey:{...}, photos:[], actions:[], history:{history:[]} } }
     if (payload.survey && payload.survey.survey) {
-      payload.survey = payload.survey.survey;
+      const nested = payload.survey;
+      payload.survey = nested.survey || null;
+      payload.photos = Array.isArray(payload.photos) ? payload.photos : (Array.isArray(nested.photos) ? nested.photos : []);
+      payload.actions = Array.isArray(payload.actions) ? payload.actions : (Array.isArray(nested.actions) ? nested.actions : []);
+      payload.history = Array.isArray(payload.history) ? payload.history : (Array.isArray(nested.history) ? nested.history : (nested.history && Array.isArray(nested.history.history) ? nested.history.history : []));
+      if (typeof payload.exists === 'undefined') payload.exists = !!payload.survey || nested.exists === true;
+      if (!payload.surveyId) payload.surveyId = nested.surveyId || payload.survey?.surveyId || '';
     }
 
     if (payload.history && !Array.isArray(payload.history) && Array.isArray(payload.history.history)) {
@@ -517,13 +523,17 @@ const App = (() => {
   }
 
   async function loadSurveyToForm() {
-    const b = qs('#buildingSelect').value, u = qs('#unitSelect').value;
+    const b = qs('#buildingSelect').value;
+    const u = qs('#unitSelect').value;
+
     clearSurveyFieldsOnly();
     updateSurveyRecordPanel('idle');
     renderSelectedApartmentPhotos();
+
     if (!b || !u) return;
 
     updateSurveyRecordPanel('loading');
+
     try {
       const result = normalizeApiPayload(await jsonp('survey', { buildingNumber: b, unitNumber: u }));
       mergeCurrentSurveyPayload(result);
@@ -539,10 +549,12 @@ const App = (() => {
         state.currentSurveyRecord = null;
         updateSurveyRecordPanel('new', null, result);
       }
+
       renderSelectedApartmentPhotos();
       renderActions();
       renderHistory();
       renderSelectedSurveyHistory();
+      renderDashboard();
     } catch (e) {
       updateSurveyRecordPanel('error');
       showAlert('טעינת סקר קיים נכשלה: ' + e.message, 'error');
@@ -572,9 +584,14 @@ const App = (() => {
 
   function mergeCurrentSurveyPayload(result) {
     result = normalizeApiPayload(result);
-    const b = qs('#buildingSelect').value, u = qs('#unitSelect').value;
+
+    const b = qs('#buildingSelect').value;
+    const u = qs('#unitSelect').value;
     const key = keyOf(b, u);
-    const sameKey = (x) => keyOf(x?.buildingNumber, x?.unitNumber) === key || String(x?.surveyId || '') === key;
+
+    const sameKey = (x) =>
+      keyOf(x?.buildingNumber, x?.unitNumber) === key ||
+      String(x?.surveyId || '') === key;
 
     state.surveys = (state.surveys || []).filter(x => !sameKey(x));
     if (result?.survey) state.surveys.push(result.survey);
@@ -671,18 +688,41 @@ const App = (() => {
     const form = qs('#surveyForm');
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
-    if (!payload.buildingNumber || !payload.unitNumber) return toast('חובה לבחור מבנה ודירה');
+
+    if (!payload.buildingNumber || !payload.unitNumber) {
+      toast('חובה לבחור מבנה ודירה');
+      return;
+    }
+
     payload.surveyId = keyOf(payload.buildingNumber, payload.unitNumber);
-    qs('#saveSurveyBtn').disabled = true; qs('#saveStatus').textContent = 'שומר...';
+
+    const savedBuildingNumber = payload.buildingNumber;
+    const savedUnitNumber = payload.unitNumber;
+
+    qs('#saveSurveyBtn').disabled = true;
+    qs('#saveStatus').textContent = 'שומר...';
+
     try {
       const saveResult = await postIframe('upsertSurvey', payload);
       await uploadSelectedPhotos(payload);
-      qs('#saveStatus').textContent = 'נשמר בהצלחה';
-      toast(saveResult?.mode === 'upsert' ? 'הסקר נשמר / עודכן' : 'הסקר נשמר');
-      await loadBootstrap();
-      openSurvey(payload.buildingNumber, payload.unitNumber);
-    } catch (e) { showAlert(e.message, 'error'); qs('#saveStatus').textContent = 'שמירה נכשלה'; }
-    finally { qs('#saveSurveyBtn').disabled = false; }
+
+      qs('#saveStatus').textContent = 'נשמר בהצלחה — טוען מחדש את הסקר השמור...';
+      toast(saveResult?.mode === 'updated' || saveResult?.mode === 'upsert' ? 'הסקר עודכן' : 'הסקר נשמר');
+
+      // Do not reset the form or reload the whole app immediately after save.
+      // Reload only this survey from the backend, so the UI shows exactly what was stored.
+      qs('#buildingSelect').value = savedBuildingNumber;
+      onBuildingChange();
+      qs('#unitSelect').value = savedUnitNumber;
+      updateSelectedApartment();
+      await loadSurveyToForm();
+
+    } catch (e) {
+      showAlert(e.message, 'error');
+      qs('#saveStatus').textContent = 'שמירה נכשלה';
+    } finally {
+      qs('#saveSurveyBtn').disabled = false;
+    }
   }
 
   async function uploadSelectedPhotos(surveyPayload) {
