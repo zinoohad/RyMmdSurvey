@@ -652,3 +652,41 @@ textarea { min-height: 84px; resize: vertical; }
   height: 80px;
   border-radius: var(--radius-sm);
 }
+
+/* v6 — survey load/edit mode */
+.survey-record-panel {
+  margin: 14px 0 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.86));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.survey-record-panel strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.survey-record-panel span { color: var(--muted); font-size: 13px; }
+.survey-record-panel.edit {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.9), rgba(239, 246, 255, 0.8));
+}
+.survey-record-panel.new {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: linear-gradient(135deg, rgba(204, 251, 241, 0.65), rgba(240, 253, 250, 0.8));
+}
+.survey-record-panel.loading {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.72), rgba(255, 251, 235, 0.86));
+}
+.record-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.record-stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: var(--text);
+}
+@media (max-width: 720px) {
+  .survey-record-panel { align-items: flex-start; flex-direction: column; }
+}
