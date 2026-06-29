@@ -690,3 +690,94 @@ textarea { min-height: 84px; resize: vertical; }
 @media (max-width: 720px) {
   .survey-record-panel { align-items: flex-start; flex-direction: column; }
 }
+
+/* v7 additions: history, diagnostics, task modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+.modal.hidden { display: none; }
+.modal-card {
+  width: min(760px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 25px 80px rgba(15, 23, 42, 0.35);
+  padding: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+.modal-card.wide { width: min(1040px, 96vw); }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.icon-btn {
+  border: none;
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 12px;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+}
+.icon-btn:hover { background: #e2e8f0; }
+.selected-history-panel { margin: 14px 0 18px; }
+.mini-history {
+  border: 1px solid rgba(148, 163, 184, .35);
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 12px;
+}
+.mini-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.history-pill {
+  text-align: right;
+  border: 1px solid rgba(99, 102, 241, .22);
+  background: #fff;
+  border-radius: 14px;
+  padding: 9px 11px;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  min-width: 190px;
+}
+.history-pill:hover { border-color: #6366f1; box-shadow: 0 8px 24px rgba(99,102,241,.12); }
+.history-pill span { color: #64748b; font-size: 12px; }
+.history-pill b { color: #0f172a; }
+.history-pill small { color: #475569; }
+.diagnostics-output {
+  direction: ltr;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  min-height: 220px;
+  overflow: auto;
+  font-size: 12px;
+}
+.diag-help {
+  margin: 12px 0;
+  border: 1px solid rgba(245, 158, 11, .35);
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
