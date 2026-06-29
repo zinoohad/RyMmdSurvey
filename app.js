@@ -1,4 +1,4 @@
-// v6: load existing survey + edit mode + grouped existing photos
+// v7: diagnostics + survey history + add/edit actions + load existing survey
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
@@ -24,6 +24,7 @@ const App = (() => {
     surveys: [],
     photos: [],
     actions: [],
+    history: [],
     plans: [],
     dashboard: [],
     settings: {},
@@ -60,6 +61,7 @@ const App = (() => {
     qs('#refreshBtn').addEventListener('click', loadBootstrap);
     qs('#newSurveyBtn').addEventListener('click', () => showView('survey'));
     qs('#exportCsvBtn').addEventListener('click', exportDashboardCsv);
+    qs('#exportHistoryCsvBtn')?.addEventListener('click', exportHistoryCsv);
     qs('#saveSettingsBtn').addEventListener('click', saveLocalSettings);
     qs('#testConnectionBtn').addEventListener('click', testConnection);
     qs('#clearSurveyBtn').addEventListener('click', clearSurveyForm);
@@ -75,6 +77,15 @@ const App = (() => {
     qs('#apartmentsSearch').addEventListener('input', renderApartments);
     qs('#apartmentsAreaFilter').addEventListener('change', renderApartments);
     qs('#photosSearch').addEventListener('input', renderPhotos);
+    qs('#actionsSearch')?.addEventListener('input', renderActions);
+    qs('#actionsStatusFilter')?.addEventListener('change', renderActions);
+    qs('#historySearch')?.addEventListener('input', renderHistory);
+    qs('#addActionBtn')?.addEventListener('click', () => openActionModal());
+    qs('#closeActionModalBtn')?.addEventListener('click', closeActionModal);
+    qs('#cancelActionBtn')?.addEventListener('click', closeActionModal);
+    qs('#actionForm')?.addEventListener('submit', saveActionFromForm);
+    qs('#runDiagnoseBtn')?.addEventListener('click', runDiagnostics);
+    qs('#closeSnapshotModalBtn')?.addEventListener('click', closeSnapshotModal);
     qsa('.step-btn').forEach(btn => btn.addEventListener('click', () => showStep(btn.dataset.step)));
     window.addEventListener('message', handleTransportMessage);
   }
@@ -166,7 +177,7 @@ const App = (() => {
   }
 
   function normalizeState() {
-    state.residents ||= []; state.surveys ||= []; state.photos ||= []; state.actions ||= []; state.plans ||= [];
+    state.residents ||= []; state.surveys ||= []; state.photos ||= []; state.actions ||= []; state.history ||= []; state.plans ||= [];
     state.dashboard = buildDashboardRows();
   }
 
@@ -184,7 +195,7 @@ const App = (() => {
   function keyOf(b,u){ return `${String(b||'').trim()}-${String(u||'').trim()}`; }
   function countBy(arr, fn){ return arr.reduce((m,x)=>{ const k=fn(x); m[k]=(m[k]||0)+1; return m; },{}); }
 
-  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); renderSelectedApartmentPhotos(); }
+  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); renderHistory(); renderSelectedApartmentPhotos(); renderSelectedSurveyHistory(); }
 
   function renderDashboard() {
     const rows = state.dashboard;
@@ -324,8 +335,104 @@ const App = (() => {
   }
 
   function renderActions() {
-    const rows = state.actions || [];
-    renderTable('#actionsTable', ['מבנה','דירה','קטגוריה','משימה','אחראי','יעד','עדיפות','סטטוס'], rows.map(a => [a.buildingNumber,a.unitNumber,a.category,a.actionDescription,a.owner,a.dueDate,a.priority,badge(a.status)]));
+    const search = qs('#actionsSearch')?.value?.trim().toLowerCase() || '';
+    const statusFilter = qs('#actionsStatusFilter')?.value || '';
+    const all = state.actions || [];
+    fillFilter('#actionsStatusFilter', unique(all.map(a => a.status)), 'כל הסטטוסים');
+    if (statusFilter) qs('#actionsStatusFilter').value = statusFilter;
+    const rows = all.filter(a => {
+      const hay = [a.buildingNumber,a.unitNumber,a.category,a.actionDescription,a.owner,a.status,a.priority].join(' ').toLowerCase();
+      return (!search || hay.includes(search)) && (!statusFilter || a.status === statusFilter);
+    });
+    renderTable('#actionsTable', ['מבנה','דירה','קטגוריה','משימה','אחראי','יעד','עדיפות','סטטוס','פעולה'], rows.map(a => [
+      a.buildingNumber,a.unitNumber,a.category,truncate(a.actionDescription,70),a.owner,a.dueDate,a.priority,badge(a.status),
+      `<button class="btn mini" onclick="MamadApp.editAction('${escAttr(a.actionId)}')">ערוך</button>`
+    ]));
+  }
+
+  function openActionModal(action = null) {
+    const modal = qs('#actionModal');
+    const form = qs('#actionForm');
+    form.reset();
+    qs('#actionIdInput').value = action?.actionId || '';
+    qs('#actionBuildingInput').value = action?.buildingNumber || qs('#buildingSelect')?.value || state.selectedApartment?.buildingNumber || '';
+    qs('#actionUnitInput').value = action?.unitNumber || qs('#unitSelect')?.value || state.selectedApartment?.unitNumber || '';
+    qs('#actionCategoryInput').value = action?.category || '';
+    qs('#actionOwnerInput').value = action?.owner || '';
+    qs('#actionDueDateInput').value = action?.dueDate || '';
+    qs('#actionPriorityInput').value = action?.priority || 'רגילה';
+    qs('#actionStatusInput').value = action?.status || 'פתוח';
+    qs('#actionDescriptionInput').value = action?.actionDescription || '';
+    qs('#actionClosureNotesInput').value = action?.closureNotes || '';
+    modal.classList.remove('hidden');
+  }
+
+  function closeActionModal() { qs('#actionModal')?.classList.add('hidden'); }
+
+  function editAction(actionId) {
+    const action = (state.actions || []).find(a => String(a.actionId) === String(actionId));
+    if (!action) return toast('המשימה לא נמצאה');
+    openActionModal(action);
+  }
+
+  async function saveActionFromForm(ev) {
+    ev.preventDefault();
+    const payload = Object.fromEntries(new FormData(qs('#actionForm')).entries());
+    if (!payload.buildingNumber || !payload.unitNumber || !payload.actionDescription) {
+      toast('חובה למלא מבנה, דירה ותיאור משימה');
+      return;
+    }
+    payload.surveyId = keyOf(payload.buildingNumber, payload.unitNumber);
+    try {
+      const res = await postIframe('saveAction', payload);
+      toast('המשימה נשמרה');
+      closeActionModal();
+      await loadBootstrap();
+      if (qs('#buildingSelect')?.value && qs('#unitSelect')?.value) {
+        await loadSurveyToForm();
+      }
+      renderActions();
+    } catch(e) {
+      showAlert('שמירת משימה נכשלה: ' + e.message, 'error');
+    }
+  }
+
+  function renderHistory() {
+    const search = qs('#historySearch')?.value?.trim().toLowerCase() || '';
+    const rows = (state.history || [])
+      .slice()
+      .sort((a,b) => String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')))
+      .filter(h => {
+        const hay = [h.buildingNumber,h.unitNumber,h.residentName,h.area,h.submittedBy,h.surveyStatus,h.executionReadinessStatus,h.openBlockers,h.summary].join(' ').toLowerCase();
+        return !search || hay.includes(search);
+      });
+    renderTable('#historyTable', ['תאריך','מבנה','דירה','סוקר','סוג שינוי','סטטוס','מוכנות','פעימה 1','חסמים','פעולה'], rows.map(h => [
+      h.submittedAt,h.buildingNumber,h.unitNumber,h.submittedBy,h.changeType,badge(h.surveyStatus),badge(h.executionReadinessStatus),badge(h.readyForFirstPhase),truncate(h.openBlockers || h.summary,80),
+      `<button class="btn mini" onclick="MamadApp.showSnapshot('${escAttr(h.historyId)}')">צפייה</button>`
+    ]));
+  }
+
+  function showSnapshot(historyId) {
+    const row = (state.history || []).find(h => String(h.historyId) === String(historyId));
+    if (!row) return toast('לא נמצא Snapshot');
+    let parsed = row.snapshotJson || '';
+    try { parsed = JSON.stringify(JSON.parse(row.snapshotJson || '{}'), null, 2); } catch(e) {}
+    qs('#snapshotOutput').textContent = parsed;
+    qs('#snapshotModal').classList.remove('hidden');
+  }
+
+  function closeSnapshotModal() { qs('#snapshotModal')?.classList.add('hidden'); }
+
+  async function runDiagnostics() {
+    const b = qs('#diagBuilding')?.value || qs('#buildingSelect')?.value || '';
+    const u = qs('#diagUnit')?.value || qs('#unitSelect')?.value || '';
+    qs('#diagnosticsOutput').textContent = 'מריץ אבחון...';
+    try {
+      const res = await jsonp('diagnose', { buildingNumber: b, unitNumber: u });
+      qs('#diagnosticsOutput').textContent = JSON.stringify(res, null, 2);
+    } catch(e) {
+      qs('#diagnosticsOutput').textContent = 'אבחון נכשל: ' + e.message + '\n\nבדוק שאתה משתמש בכתובת Web App שמסתיימת ב-/exec ושבוצע Deploy לגרסה החדשה.';
+    }
   }
 
   function renderTable(selector, headers, rows) {
@@ -355,6 +462,7 @@ const App = (() => {
     qs('#residentInput').value = r?.residentName || '';
     renderPlanPanel(r?.buildingNumber);
     renderSelectedApartmentPhotos();
+    renderSelectedSurveyHistory();
     updateSurveyRecordPanel(qs('#buildingSelect').value && qs('#unitSelect').value ? 'new' : 'idle');
   }
 
@@ -397,6 +505,9 @@ const App = (() => {
         updateSurveyRecordPanel('new', null, result);
       }
       renderSelectedApartmentPhotos();
+      renderActions();
+      renderHistory();
+      renderSelectedSurveyHistory();
     } catch (e) {
       updateSurveyRecordPanel('error');
       showAlert('טעינת סקר קיים נכשלה: ' + e.message, 'error');
@@ -434,6 +545,8 @@ const App = (() => {
 
     state.photos = (state.photos || []).filter(x => !sameKey(x)).concat(result?.photos || []);
     state.actions = (state.actions || []).filter(x => !sameKey(x)).concat(result?.actions || []);
+    state.history = (state.history || []).filter(x => !sameKey(x)).concat(result?.history || []);
+    state.dashboard = buildDashboardRows();
   }
 
   function updateSurveyRecordPanel(mode, survey = null, result = null) {
@@ -471,6 +584,37 @@ const App = (() => {
     qs('#saveSurveyBtn').textContent = mode === 'edit' ? '💾 שמירת עדכון' : '💾 שמירת סקר';
   }
 
+
+  function selectedApartmentHistory() {
+    const b = qs('#buildingSelect')?.value || state.selectedApartment?.buildingNumber;
+    const u = qs('#unitSelect')?.value || state.selectedApartment?.unitNumber;
+    if (!b || !u) return [];
+    const k = keyOf(b, u);
+    return (state.history || [])
+      .filter(h => keyOf(h.buildingNumber, h.unitNumber) === k || String(h.surveyId || '') === k)
+      .sort((a,b) => String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')));
+  }
+
+  function renderSelectedSurveyHistory() {
+    const el = qs('#selectedHistoryPanel');
+    if (!el) return;
+    const rows = selectedApartmentHistory().slice(0, 5);
+    if (!qs('#buildingSelect')?.value || !qs('#unitSelect')?.value) {
+      el.innerHTML = '';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="mini-history muted">אין עדיין היסטוריית שמירות לדירה זו.</div>';
+      return;
+    }
+    el.innerHTML = `<div class="mini-history"><strong>היסטוריית עדכונים אחרונה</strong><div class="mini-history-list">${rows.map(h => `
+      <button type="button" class="history-pill" onclick="MamadApp.showSnapshot('${escAttr(h.historyId)}')">
+        <span>${esc(h.submittedAt || '')}</span>
+        <b>${esc(h.submittedBy || 'לא צוין')}</b>
+        <small>${esc(h.changeType || '')} · ${esc(h.surveyStatus || '')}</small>
+      </button>`).join('')}</div></div>`;
+  }
+
   function selectedApartmentActions() {
     const b = qs('#buildingSelect')?.value || state.selectedApartment?.buildingNumber;
     const u = qs('#unitSelect')?.value || state.selectedApartment?.unitNumber;
@@ -479,7 +623,7 @@ const App = (() => {
   }
 
   function clearSurveyForm() {
-    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; state.currentSurveyRecord = null; populateSelectors(); renderSelectedApartmentPhotos(); updateSurveyRecordPanel('idle');
+    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; state.currentSurveyRecord = null; populateSelectors(); renderSelectedApartmentPhotos(); renderSelectedSurveyHistory(); updateSurveyRecordPanel('idle');
   }
 
   async function saveSurvey(ev) {
@@ -538,7 +682,7 @@ const App = (() => {
     state.currentView = view;
     qsa('.view').forEach(v => v.classList.toggle('active', v.id === `${view}View`));
     qsa('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    const titles = { dashboard:['Dashboard','תמונת מצב מלאה לפי מבנה, דירה, חסמים ומוכנות לביצוע'], apartments:['דירות / מבנים','מקור המידע מה־Google Sheet'], survey:['טופס סקר','מילוי סקר שטח לפי דירה/מבנה'], photos:['תמונות','תמונות שהועלו מהשטח'], actions:['משימות','מעקב חסמים ומשימות פתוחות'], settings:['הגדרות','חיבור ל־Apps Script Backend'] };
+    const titles = { dashboard:['Dashboard','תמונת מצב מלאה לפי מבנה, דירה, חסמים ומוכנות לביצוע'], apartments:['דירות / מבנים','מקור המידע מה־Google Sheet'], survey:['טופס סקר','מילוי סקר שטח לפי דירה/מבנה'], photos:['תמונות','תמונות שהועלו מהשטח'], actions:['משימות','מעקב חסמים ומשימות פתוחות'], history:['היסטוריה','כל שמירה ועדכון שבוצעו לסקרים'], diagnostics:['בדיקות מערכת','אבחון טעינת נתונים וחיבור ל־Apps Script'], settings:['הגדרות','חיבור ל־Apps Script Backend'] };
     qs('#pageTitle').textContent = titles[view]?.[0] || '';
     qs('#pageSubtitle').textContent = titles[view]?.[1] || '';
   }
@@ -566,13 +710,21 @@ const App = (() => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `mamad-dashboard-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
   }
+  function exportHistoryCsv() {
+    const headers = ['submittedAt','surveyId','buildingNumber','unitNumber','area','residentName','submittedBy','changeType','surveyStatus','executionReadinessStatus','readyForFirstPhase','decisionRequiredBy','openBlockers','summary'];
+    const lines = [headers.join(',')].concat((state.history || []).map(r => headers.map(h => csvCell(r[h])).join(',')));
+    const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `mamad-history-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  }
+
   function csvCell(v){ return '"' + String(v ?? '').replace(/"/g,'""') + '"'; }
 
   function setConnection(kind, text){ const d=qs('#connectionDot'); d.className=`dot ${kind}`; qs('#connectionText').textContent=text; }
   function toast(msg){ const t=qs('#toast'); t.textContent=msg; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'), 2800); }
   function showAlert(msg, kind='info'){ const a=qs('#alertBox'); a.textContent=msg; a.className=`alert ${kind}`; setTimeout(()=>a.classList.add('hidden'), 8000); }
 
-  return { init, openSurvey };
+  return { init, openSurvey, editAction, showSnapshot };
 })();
 
 window.MamadApp = App;
