@@ -39,9 +39,15 @@
           <button class="nav-btn" data-view="actions">
             <span class="nav-icon">✅</span>משימות
           </button>
+          <button class="nav-btn" data-view="history">
+            <span class="nav-icon">🕘</span>היסטוריה
+          </button>
           <span class="nav-label">מערכת</span>
           <button class="nav-btn" data-view="settings">
             <span class="nav-icon">⚙️</span>הגדרות
+          </button>
+          <button class="nav-btn" data-view="diagnostics">
+            <span class="nav-icon">🧪</span>בדיקות מערכת
           </button>
         </nav>
 
@@ -158,6 +164,8 @@
                     <span id="surveyActionCount">0 משימות פתוחות</span>
                   </div>
                 </div>
+
+                <div id="selectedHistoryPanel" class="selected-history-panel"></div>
 
                 <div class="steps">
                   <button type="button" class="step-btn active" data-step="planning">מיקום ותכנון</button>
@@ -313,7 +321,47 @@
                 <h3>משימות פתוחות</h3>
                 <button class="btn secondary" id="addActionBtn">+ הוספת משימה</button>
               </div>
+              <div class="filters compact">
+                <input id="actionsSearch" placeholder="🔍 חיפוש משימה / מבנה / אחראי" />
+                <select id="actionsStatusFilter"><option value="">כל הסטטוסים</option></select>
+              </div>
               <div class="table-wrap"><table id="actionsTable"></table></div>
+            </section>
+          </section>
+
+          <!-- ── History view ── -->
+          <section id="historyView" class="view">
+            <section class="card">
+              <div class="card-title row-between">
+                <div>
+                  <h3>היסטוריית דיווחים</h3>
+                  <p class="muted">כל שמירה של סקר נשמרת כ־snapshot נפרד, בנוסף למצב האחרון בגיליון סקר ממדים.</p>
+                </div>
+                <button class="btn secondary" id="exportHistoryCsvBtn">ייצוא היסטוריה CSV</button>
+              </div>
+              <div class="filters compact">
+                <input id="historySearch" placeholder="🔍 חיפוש לפי מבנה / דירה / סוקר / סטטוס / חסם" />
+              </div>
+              <div class="table-wrap"><table id="historyTable"></table></div>
+            </section>
+          </section>
+
+          <!-- ── Diagnostics view ── -->
+          <section id="diagnosticsView" class="view">
+            <section class="card">
+              <div class="card-title">
+                <h3>בדיקות מערכת / אבחון טעינת נתונים</h3>
+                <p class="muted">מיועד לבדוק למה רשומה קיימת ב־Google Sheet לא נטענת ל־UI.</p>
+              </div>
+              <div class="form-grid three">
+                <label>מספר מבנה<input id="diagBuilding" placeholder="לדוגמה 404" /></label>
+                <label>מספר דירה<input id="diagUnit" placeholder="לדוגמה 2" /></label>
+                <label>פעולה<button class="btn primary" id="runDiagnoseBtn" type="button">הרצת אבחון</button></label>
+              </div>
+              <div class="diag-help">
+                אם אתה מקבל מסך Google Drive עם “file does not exist”, זו בדרך כלל כתובת Web App שגויה או Deployment שלא קיים. צריך להשתמש בכתובת שמסתיימת ב־<code>/exec</code> מתוך Deploy פעיל של Apps Script.
+              </div>
+              <pre id="diagnosticsOutput" class="diagnostics-output">לא הורץ עדיין.</pre>
             </section>
           </section>
 
@@ -344,6 +392,45 @@
 
         </div><!-- /content -->
       </main>
+    </div>
+
+    <div id="actionModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>הוספת / עריכת משימה</h3>
+          <button class="icon-btn" id="closeActionModalBtn" type="button">×</button>
+        </div>
+        <form id="actionForm">
+          <input type="hidden" name="actionId" id="actionIdInput" />
+          <div class="form-grid two">
+            <label>מבנה<input name="buildingNumber" id="actionBuildingInput" required /></label>
+            <label>דירה<input name="unitNumber" id="actionUnitInput" required /></label>
+            <label>קטגוריה<select name="category" id="actionCategoryInput">
+              <option value="">בחר</option><option>תשתיות</option><option>נוי</option><option>בניין</option><option>דייר</option><option>ועדת תכנון</option><option>קבלן</option><option>אחר</option>
+            </select></label>
+            <label>אחראי<input name="owner" id="actionOwnerInput" /></label>
+            <label>תאריך יעד<input name="dueDate" id="actionDueDateInput" type="date" /></label>
+            <label>עדיפות<select name="priority" id="actionPriorityInput"><option>רגילה</option><option>גבוהה</option><option>קריטית</option><option>נמוכה</option></select></label>
+            <label>סטטוס<select name="status" id="actionStatusInput"><option>פתוח</option><option>בטיפול</option><option>סגור</option></select></label>
+          </div>
+          <label>תיאור משימה<textarea name="actionDescription" id="actionDescriptionInput" required></textarea></label>
+          <label>הערות סגירה<textarea name="closureNotes" id="actionClosureNotesInput"></textarea></label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">שמירת משימה</button>
+            <button class="btn ghost" type="button" id="cancelActionBtn">ביטול</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="snapshotModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h3>Snapshot סקר</h3>
+          <button class="icon-btn" id="closeSnapshotModalBtn" type="button">×</button>
+        </div>
+        <pre id="snapshotOutput" class="diagnostics-output"></pre>
+      </div>
     </div>
 
     <div id="toast" class="toast hidden"></div>
