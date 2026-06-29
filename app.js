@@ -1,4 +1,4 @@
-// v7: diagnostics + survey history + add/edit actions + load existing survey
+// v9: canonical UI/DB field mapping + stable load/edit after save
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
@@ -136,6 +136,9 @@ const App = (() => {
     payload.actions = Array.isArray(payload.actions) ? payload.actions : [];
     payload.history = Array.isArray(payload.history) ? payload.history : [];
 
+    if (payload.survey) payload.survey = normalizeSurveyForForm(payload.survey);
+    if (Array.isArray(payload.dashboard)) payload.dashboard = payload.dashboard.map(row => row && row.survey ? ({ ...row, survey: normalizeSurveyForForm(row.survey) }) : row);
+
     return payload;
   }
 
@@ -217,6 +220,7 @@ const App = (() => {
 
   function normalizeState() {
     state.residents ||= []; state.surveys ||= []; state.photos ||= []; state.actions ||= []; state.history ||= []; state.plans ||= [];
+    state.surveys = state.surveys.map(s => normalizeSurveyForForm(s));
     state.dashboard = buildDashboardRows();
   }
 
@@ -573,13 +577,149 @@ const App = (() => {
     qs('#saveStatus').textContent = '';
   }
 
+  const SURVEY_FIELD_ALIASES = {
+    surveyId: ['surveyId', 'Survey_ID'],
+    buildingNumber: ['buildingNumber', 'Building_Number'],
+    unitNumber: ['unitNumber', 'Unit_Number'],
+    residentName: ['residentName', 'Resident_Name'],
+    area: ['area', 'Area'],
+    surveyor: ['surveyor', 'Surveyor'],
+    surveyDate: ['surveyDate', 'Survey_Date'],
+    surveyStatus: ['surveyStatus', 'Survey_Status'],
+    executionComplexity: ['executionComplexity', 'Execution_Complexity'],
+    proposedMamadLocation: ['proposedMamadLocation', 'Proposed_Mamad_Location'],
+    planningNotes: ['planningNotes', 'Planning_Notes'],
+    locationFeasible: ['locationFeasible', 'Location_Feasible'],
+    locationChangeRequired: ['locationChangeRequired', 'Location_Change_Required'],
+    engineeringAccessStatus: ['engineeringAccessStatus', 'Engineering_Access_Status'],
+    engineeringAccessPoint: ['engineeringAccessPoint', 'Engineering_Access_Point'],
+    accessDemolitionRequired: ['accessDemolitionRequired', 'Access_Demolition_Required'],
+    privateYardAccess: ['privateYardAccess', 'Private_Yard_Access'],
+    sidewalkImpact: ['sidewalkImpact', 'Sidewalk_Impact'],
+    accessNotes: ['accessNotes', 'Access_Notes'],
+    electricityStatus: ['electricityStatus', 'Electricity_Status'],
+    waterStatus: ['waterStatus', 'Water_Status'],
+    sewageStatus: ['sewageStatus', 'Sewage_Status'],
+    drainageStatus: ['drainageStatus', 'Drainage_Status'],
+    communicationStatus: ['communicationStatus', 'Communication_Status'],
+    gasStatus: ['gasStatus', 'Gas_Status'],
+    acStatus: ['acStatus', 'AC_Status'],
+    infraSurveyRequired: ['infraSurveyRequired', 'Infra_Survey_Required'],
+    infraOwner: ['infraOwner', 'Infra_Owner'],
+    infrastructureNotes: ['infrastructureNotes', 'Infrastructure_Notes'],
+    vegetationImpact: ['vegetationImpact', 'Vegetation_Impact'],
+    vegetationType: ['vegetationType', 'Vegetation_Type'],
+    vegetationAction: ['vegetationAction', 'Vegetation_Action'],
+    treeImpact: ['treeImpact', 'Tree_Impact'],
+    treePermitRequired: ['treePermitRequired', 'Tree_Permit_Required'],
+    pergolaAction: ['pergolaAction', 'Pergola_Action'],
+    fenceGateAction: ['fenceGateAction', 'Fence_Gate_Action'],
+    outdoorCabinetAction: ['outdoorCabinetAction', 'Outdoor_Cabinet_Action'],
+    externalAcAction: ['externalAcAction', 'External_AC_Action'],
+    windowBarsShutterAction: ['windowBarsShutterAction', 'Window_Bars_Shutter_Action'],
+    gardenDemolitionNotes: ['gardenDemolitionNotes', 'Garden_Demolition_Notes'],
+    internalStructuralChange: ['internalStructuralChange', 'Internal_Structural_Change'],
+    interiorChangeType: ['interiorChangeType', 'Interior_Change_Type'],
+    kitchenImpact: ['kitchenImpact', 'Kitchen_Impact'],
+    openingWindowDoorImpact: ['openingWindowDoorImpact', 'Opening_Window_Door_Impact'],
+    smallApartmentFlag: ['smallApartmentFlag', 'Small_Apartment_Flag'],
+    smallApartmentClassificationImpact: ['smallApartmentClassificationImpact', 'Small_Apartment_Classification_Impact'],
+    planningCommitteeDecisionRequired: ['planningCommitteeDecisionRequired', 'Planning_Committee_Decision_Required'],
+    interiorNotes: ['interiorNotes', 'Interior_Notes'],
+    presentedToResident: ['presentedToResident', 'Presented_To_Resident'],
+    residentCommentsReceived: ['residentCommentsReceived', 'Resident_Comments_Received'],
+    residentComments: ['residentComments', 'Resident_Comments'],
+    residentCommentDecision: ['residentCommentDecision', 'Resident_Comment_Decision'],
+    readyForFirstPhase: ['readyForFirstPhase', 'Ready_For_First_Phase'],
+    executionReadinessStatus: ['executionReadinessStatus', 'Execution_Readiness_Status'],
+    decisionRequiredBy: ['decisionRequiredBy', 'Decision_Required_By'],
+    openBlockers: ['openBlockers', 'Open_Blockers'],
+    surveyorRecommendation: ['surveyorRecommendation', 'Surveyor_Recommendation'],
+    lastUpdate: ['lastUpdate', 'Last_Update'],
+    updatedBy: ['updatedBy', 'Updated_By']
+  };
+
+  function firstDefinedValue(obj, aliases) {
+    for (const key of aliases) {
+      if (Object.prototype.hasOwnProperty.call(obj || {}, key)) {
+        const val = obj[key];
+        if (val !== undefined && val !== null) return val;
+      }
+    }
+    return '';
+  }
+
+  function normalizeSurveyForForm(survey) {
+    const raw = survey || {};
+    const s = {};
+    Object.entries(SURVEY_FIELD_ALIASES).forEach(([uiName, aliases]) => {
+      s[uiName] = firstDefinedValue(raw, aliases);
+    });
+    return s;
+  }
+
+  function normalizeDateInputValue(value) {
+    if (!value) return '';
+    const s = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
+    return '';
+  }
+
+  function setSelectValueSafe(selectEl, rawValue) {
+    const value = String(rawValue ?? '').trim();
+    if (!value) {
+      selectEl.value = '';
+      return;
+    }
+    const options = Array.from(selectEl.options || []);
+    const exact = options.find(o => String(o.value).trim() === value);
+    if (exact) {
+      selectEl.value = exact.value;
+      return;
+    }
+    const byText = options.find(o => String(o.textContent).trim() === value);
+    if (byText) {
+      selectEl.value = byText.value;
+      return;
+    }
+    // Do not drop DB values that are not in the current select list.
+    // Add them visibly so data is preserved and the mismatch is obvious.
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = `${value} ⚠`;
+    selectEl.appendChild(opt);
+    selectEl.value = value;
+  }
+
+  function setFormElementValue(el, value) {
+    if (!el) return;
+    const normalized = value ?? '';
+    if (el.tagName === 'SELECT') {
+      setSelectValueSafe(el, normalized);
+    } else if (el.type === 'checkbox') {
+      el.checked = normalized === true || normalized === 'true' || normalized === 'כן';
+    } else if (el.type === 'date') {
+      el.value = normalizeDateInputValue(normalized);
+    } else if (el.type !== 'file') {
+      el.value = normalized;
+    }
+  }
+
   function fillSurveyForm(survey) {
     const form = qs('#surveyForm');
-    Object.entries(survey || {}).forEach(([key, val]) => {
-      const el = form.elements[key];
-      if (!el || ['buildingNumber','unitNumber','area','residentName'].includes(key)) return;
-      el.value = val ?? '';
+    if (!form || !survey) return;
+
+    const normalized = normalizeSurveyForForm(survey);
+
+    Object.entries(normalized).forEach(([fieldName, value]) => {
+      setFormElementValue(form.elements[fieldName], value);
     });
+
+    state.currentSurveyRecord = normalized;
+
+    // Critical debug line: keep this until field alignment is fully proven in production.
+    console.info('MAMAD fillSurveyForm normalized survey:', normalized);
   }
 
   function mergeCurrentSurveyPayload(result) {
