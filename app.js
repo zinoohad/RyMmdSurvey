@@ -1,3 +1,4 @@
+// v6: load existing survey + edit mode + grouped existing photos
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
@@ -27,6 +28,7 @@ const App = (() => {
     dashboard: [],
     settings: {},
     selectedApartment: null,
+    currentSurveyRecord: null,
     currentView: 'dashboard',
   };
 
@@ -105,7 +107,7 @@ const App = (() => {
     Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v ?? ''));
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      const timer = setTimeout(() => { cleanup(); reject(new Error('Timeout מול Apps Script')); }, 25000);
+      const timer = setTimeout(() => { cleanup(); reject(new Error('Timeout מול Apps Script')); }, 45000);
       function cleanup(){ clearTimeout(timer); delete window[callback]; script.remove(); }
       window[callback] = (res) => { cleanup(); res && res.ok ? resolve(res.data) : reject(new Error((res && res.error) || 'שגיאת שרת')); };
       script.onerror = () => { cleanup(); reject(new Error('טעינת Apps Script נכשלה')); };
@@ -232,7 +234,7 @@ const App = (() => {
     qs('#dashboardCount').textContent = `${rows.length} רשומות`;
     renderTable('#dashboardTable', ['מבנה','דירה','אזור','דייר','סטטוס סקר','מוכנות','מורכבות','חסם מרכזי','פעימה 1','תמונות','משימות','פעולה'], rows.map(r => [
       r.buildingNumber, r.unitNumber, r.area, r.residentName || '', badge(r.surveyStatus), badge(r.executionReadinessStatus), r.executionComplexity || '', truncate(r.openBlockers, 45), badge(r.readyForFirstPhase), r.photoCount || 0, r.openActionCount || 0,
-      `<button class="btn mini" onclick="MamadApp.openSurvey('${escAttr(r.buildingNumber)}','${escAttr(r.unitNumber)}')">פתח</button>`
+      `<button class="btn mini" onclick="MamadApp.openSurvey('${escAttr(r.buildingNumber)}','${escAttr(r.unitNumber)}')">פתח / ערוך</button>`
     ]));
   }
 
@@ -353,6 +355,7 @@ const App = (() => {
     qs('#residentInput').value = r?.residentName || '';
     renderPlanPanel(r?.buildingNumber);
     renderSelectedApartmentPhotos();
+    updateSurveyRecordPanel(qs('#buildingSelect').value && qs('#unitSelect').value ? 'new' : 'idle');
   }
 
   function renderPlanPanel(buildingNumber) {
@@ -372,16 +375,111 @@ const App = (() => {
     loadSurveyToForm();
   }
 
-  function loadSurveyToForm() {
+  async function loadSurveyToForm() {
     const b = qs('#buildingSelect').value, u = qs('#unitSelect').value;
-    const s = state.surveys.find(x => String(x.buildingNumber) === String(b) && String(x.unitNumber) === String(u));
-    if (!s) return;
+    clearSurveyFieldsOnly();
+    updateSurveyRecordPanel('idle');
+    renderSelectedApartmentPhotos();
+    if (!b || !u) return;
+
+    updateSurveyRecordPanel('loading');
+    try {
+      const result = await jsonp('survey', { buildingNumber: b, unitNumber: u });
+      mergeCurrentSurveyPayload(result);
+      const survey = result?.survey || null;
+
+      if (survey) {
+        fillSurveyForm(survey);
+        state.currentSurveyRecord = survey;
+        updateSurveyRecordPanel('edit', survey, result);
+      } else {
+        state.currentSurveyRecord = null;
+        updateSurveyRecordPanel('new', null, result);
+      }
+      renderSelectedApartmentPhotos();
+    } catch (e) {
+      updateSurveyRecordPanel('error');
+      showAlert('טעינת סקר קיים נכשלה: ' + e.message, 'error');
+    }
+  }
+
+  function clearSurveyFieldsOnly() {
     const form = qs('#surveyForm');
-    Object.entries(s).forEach(([key,val]) => { const el = form.elements[key]; if (el && !['buildingNumber','unitNumber','area','residentName'].includes(key)) el.value = val ?? ''; });
+    [...form.elements].forEach(el => {
+      if (!el.name || ['buildingNumber','unitNumber','area','residentName'].includes(el.name)) return;
+      if (el.tagName === 'SELECT') el.value = '';
+      else if (el.type === 'file') el.value = '';
+      else el.value = '';
+    });
+    qs('#photoPreview').innerHTML = '';
+    qs('#saveStatus').textContent = '';
+  }
+
+  function fillSurveyForm(survey) {
+    const form = qs('#surveyForm');
+    Object.entries(survey || {}).forEach(([key, val]) => {
+      const el = form.elements[key];
+      if (!el || ['buildingNumber','unitNumber','area','residentName'].includes(key)) return;
+      el.value = val ?? '';
+    });
+  }
+
+  function mergeCurrentSurveyPayload(result) {
+    const b = qs('#buildingSelect').value, u = qs('#unitSelect').value;
+    const key = keyOf(b, u);
+    const sameKey = (x) => keyOf(x?.buildingNumber, x?.unitNumber) === key || String(x?.surveyId || '') === key;
+
+    state.surveys = (state.surveys || []).filter(x => !sameKey(x));
+    if (result?.survey) state.surveys.push(result.survey);
+
+    state.photos = (state.photos || []).filter(x => !sameKey(x)).concat(result?.photos || []);
+    state.actions = (state.actions || []).filter(x => !sameKey(x)).concat(result?.actions || []);
+  }
+
+  function updateSurveyRecordPanel(mode, survey = null, result = null) {
+    const panel = qs('#surveyRecordPanel');
+    if (!panel) return;
+    panel.className = `survey-record-panel ${mode || 'new'}`;
+    const modeEl = qs('#surveyRecordMode');
+    const metaEl = qs('#surveyRecordMeta');
+    const photoEl = qs('#surveyPhotoCount');
+    const actionEl = qs('#surveyActionCount');
+
+    const photos = result?.photos ?? selectedApartmentPhotos();
+    const actions = result?.actions ?? selectedApartmentActions();
+    const openActions = (actions || []).filter(a => a.status !== 'סגור').length;
+
+    if (mode === 'loading') {
+      modeEl.textContent = 'טוען סקר קיים...';
+      metaEl.textContent = 'בודק בגיליון סקר ממדים לפי מבנה ודירה.';
+    } else if (mode === 'edit') {
+      modeEl.textContent = 'סקר קיים — מצב עריכה';
+      metaEl.textContent = `Survey_ID: ${esc(survey?.surveyId || keyOf(qs('#buildingSelect').value, qs('#unitSelect').value))} | עודכן לאחרונה: ${esc(survey?.lastUpdate || 'לא ידוע')}`;
+    } else if (mode === 'error') {
+      modeEl.textContent = 'שגיאה בטעינת סקר';
+      metaEl.textContent = 'הנתונים אולי קיימים ב־Sheet, אך לא נטענו לאתר.';
+    } else if (qs('#buildingSelect').value && qs('#unitSelect').value) {
+      modeEl.textContent = 'סקר חדש';
+      metaEl.textContent = 'לא נמצא סקר שמור לדירה זו. שמירה תיצור רשומה חדשה.';
+    } else {
+      modeEl.textContent = 'בחר מבנה ודירה';
+      metaEl.textContent = 'המערכת תטען אוטומטית סקר קיים אם כבר מולא.';
+    }
+
+    photoEl.textContent = `${(photos || []).length} תמונות`;
+    actionEl.textContent = `${openActions} משימות פתוחות`;
+    qs('#saveSurveyBtn').textContent = mode === 'edit' ? '💾 שמירת עדכון' : '💾 שמירת סקר';
+  }
+
+  function selectedApartmentActions() {
+    const b = qs('#buildingSelect')?.value || state.selectedApartment?.buildingNumber;
+    const u = qs('#unitSelect')?.value || state.selectedApartment?.unitNumber;
+    if (!b || !u) return [];
+    return (state.actions || []).filter(a => String(a.buildingNumber) === String(b) && String(a.unitNumber) === String(u));
   }
 
   function clearSurveyForm() {
-    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; populateSelectors(); renderSelectedApartmentPhotos();
+    qs('#surveyForm').reset(); qs('#photoPreview').innerHTML = ''; qs('#saveStatus').textContent = ''; state.currentSurveyRecord = null; populateSelectors(); renderSelectedApartmentPhotos(); updateSurveyRecordPanel('idle');
   }
 
   async function saveSurvey(ev) {
@@ -393,11 +491,12 @@ const App = (() => {
     payload.surveyId = keyOf(payload.buildingNumber, payload.unitNumber);
     qs('#saveSurveyBtn').disabled = true; qs('#saveStatus').textContent = 'שומר...';
     try {
-      await postIframe('upsertSurvey', payload);
+      const saveResult = await postIframe('upsertSurvey', payload);
       await uploadSelectedPhotos(payload);
       qs('#saveStatus').textContent = 'נשמר בהצלחה';
-      toast('הסקר נשמר');
+      toast(saveResult?.mode === 'upsert' ? 'הסקר נשמר / עודכן' : 'הסקר נשמר');
       await loadBootstrap();
+      openSurvey(payload.buildingNumber, payload.unitNumber);
     } catch (e) { showAlert(e.message, 'error'); qs('#saveStatus').textContent = 'שמירה נכשלה'; }
     finally { qs('#saveSurveyBtn').disabled = false; }
   }
