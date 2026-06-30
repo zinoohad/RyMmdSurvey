@@ -1,9 +1,9 @@
-// v9: canonical UI/DB field mapping + stable load/edit after save
+// v12: canonical UI/DB field mapping + frontend/server option alignment
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
     yesNoCheck: ['', 'כן', 'לא', 'לבדיקה'],
-    surveyStatus: ['', 'לא נבדק', 'בבדיקה', 'חסר מידע', 'הושלם'],
+    surveyStatus: ['', 'לא התחיל', 'לא נבדק', 'בבדיקה', 'חסר מידע', 'הושלם'],
     complexity: ['', 'נמוכה', 'בינונית', 'גבוהה', 'חריגה'],
     readiness: ['', 'לא נבדק', 'בבדיקה', 'חסר מידע', 'מוכן לביצוע', 'מוכן לביצוע בתנאים', 'לא מוכן לביצוע', 'דורש החלטת ועדת תכנון', 'דורש טיפול תשתיות', 'דורש טיפול נוי', 'דורש תיאום דייר'],
     firstPhase: ['', 'מתאים', 'לא מתאים', 'מתאים לאחר סגירת חסם', 'לבדיקה'],
@@ -722,6 +722,32 @@ const App = (() => {
     console.info('MAMAD fillSurveyForm normalized survey:', normalized);
   }
 
+  function sanitizeSurveyPayloadForServer(payload) {
+    const form = qs('#surveyForm');
+    if (!form || !payload) return { payload, warnings: [] };
+
+    const warnings = [];
+
+    qsa('select[data-options]', form).forEach(sel => {
+      const name = sel.name;
+      if (!name) return;
+
+      const key = sel.dataset.options;
+      const allowed = OPTIONS[key] || [];
+      const value = String(payload[name] ?? '').trim();
+
+      // If setSelectValueSafe added an old DB value with a warning marker, it is not a real UI option.
+      // Do not send it back to the server, because it can block validation or preserve corrupted data.
+      if (value && !allowed.includes(value)) {
+        warnings.push(`${name}: "${value}" נמחק כי אינו מופיע ברשימת האפשרויות של ה-UI`);
+        payload[name] = '';
+        sel.value = '';
+      }
+    });
+
+    return { payload, warnings };
+  }
+
   function mergeCurrentSurveyPayload(result) {
     result = normalizeApiPayload(result);
 
@@ -827,7 +853,13 @@ const App = (() => {
     ev.preventDefault();
     const form = qs('#surveyForm');
     const fd = new FormData(form);
-    const payload = Object.fromEntries(fd.entries());
+    let payload = Object.fromEntries(fd.entries());
+    const sanitized = sanitizeSurveyPayloadForServer(payload);
+    payload = sanitized.payload;
+    if (sanitized.warnings.length) {
+      console.warn('MAMAD save payload sanitized:', sanitized.warnings);
+      toast('נוקו ערכים ישנים/לא חוקיים לפני שמירה. בדוק את ה-Console לפרטים.');
+    }
 
     if (!payload.buildingNumber || !payload.unitNumber) {
       toast('חובה לבחור מבנה ודירה');
