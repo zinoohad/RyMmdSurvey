@@ -1,4 +1,4 @@
-// v12: canonical UI/DB field mapping + frontend/server option alignment
+// v13: canonical field mapping + delete uploaded photos
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
@@ -313,12 +313,15 @@ const App = (() => {
     const s = qs('#photosSearch').value.trim().toLowerCase();
     const photos = state.photos.filter(p => !s || [p.buildingNumber,p.unitNumber,p.photoType,p.photoDescription,p.fileName].join(' ').toLowerCase().includes(s));
     qs('#photosGrid').innerHTML = photos.length ? photos.map(p => `
-      <a class="photo-card" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer">
-        ${photoPreviewUrl(p) ? `<img class="photo-thumb-img" src="${esc(photoPreviewUrl(p))}" alt="${esc(p.photoDescription || p.fileName || 'תמונה')}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-thumb', textContent:'📷'}))">` : '<div class="photo-thumb">📷</div>'}
-        <strong>מבנה ${esc(p.buildingNumber)} / דירה ${esc(p.unitNumber)}</strong>
-        <span>${esc(p.photoType || 'תמונה')}</span>
-        <small>${esc(p.photoDescription || p.fileName || '')}</small>
-      </a>`).join('') : '<p class="muted">אין תמונות להצגה.</p>';
+      <div class="photo-card photo-card-wrap">
+        <button type="button" class="photo-delete-btn" title="מחיקת תמונה" onclick="MamadApp.deletePhotoConfirm('${escAttr(p.photoId)}')">×</button>
+        <a class="photo-card-link" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer">
+          ${photoPreviewUrl(p) ? `<img class="photo-thumb-img" src="${esc(photoPreviewUrl(p))}" alt="${esc(p.photoDescription || p.fileName || 'תמונה')}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-thumb', textContent:'📷'}))">` : '<div class="photo-thumb">📷</div>'}
+          <strong>מבנה ${esc(p.buildingNumber)} / דירה ${esc(p.unitNumber)}</strong>
+          <span>${esc(p.photoType || 'תמונה')}</span>
+          <small>${esc(p.photoDescription || p.fileName || '')}</small>
+        </a>
+      </div>`).join('') : '<p class="muted">אין תמונות להצגה.</p>';
   }
 
   function getPhotoSection(photoType) {
@@ -368,13 +371,56 @@ const App = (() => {
     const preview = photoPreviewUrl(p);
     const title = p.photoDescription || p.fileName || p.photoType || 'תמונה';
     return `
-      <a class="inline-photo-card" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer" title="${esc(title)}">
-        ${preview ? `<img src="${esc(preview)}" alt="${esc(title)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-fallback', textContent:'📷'}))">` : '<div class="photo-fallback">📷</div>'}
-        <div class="inline-photo-meta">
-          <strong>${esc(p.photoType || 'תמונה')}</strong>
-          <span>${esc(title)}</span>
-        </div>
-      </a>`;
+      <div class="inline-photo-card inline-photo-wrap" title="${esc(title)}">
+        <button type="button" class="photo-delete-btn inline" title="מחיקת תמונה" onclick="MamadApp.deletePhotoConfirm('${escAttr(p.photoId)}')">×</button>
+        <a class="inline-photo-link" href="${esc(p.fileUrl)}" target="_blank" rel="noreferrer">
+          ${preview ? `<img src="${esc(preview)}" alt="${esc(title)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'photo-fallback', textContent:'📷'}))">` : '<div class="photo-fallback">📷</div>'}
+          <div class="inline-photo-meta">
+            <strong>${esc(p.photoType || 'תמונה')}</strong>
+            <span>${esc(title)}</span>
+          </div>
+        </a>
+      </div>`;
+  }
+
+  async function deletePhotoConfirm(photoId) {
+    const photo = (state.photos || []).find(p => String(p.photoId) === String(photoId));
+    if (!photo) {
+      toast('התמונה לא נמצאה ברשימת התמונות המקומית. רענן נתונים ונסה שוב.');
+      return;
+    }
+
+    const label = `${photo.photoType || 'תמונה'} — מבנה ${photo.buildingNumber || ''} / דירה ${photo.unitNumber || ''}`;
+    const ok = window.confirm(`למחוק את התמונה?\n\n${label}\n\nהפעולה תסיר את הרשומה מהמערכת ותעביר את הקובץ ב-Google Drive לאשפה.`);
+    if (!ok) return;
+
+    try {
+      await postIframe('deletePhoto', {
+        photoId: photo.photoId,
+        driveFileId: photo.driveFileId,
+        surveyId: photo.surveyId,
+        buildingNumber: photo.buildingNumber,
+        unitNumber: photo.unitNumber
+      });
+
+      removePhotoFromState(photo.photoId);
+      state.dashboard = buildDashboardRows();
+      renderDashboard();
+      renderPhotos();
+      renderSelectedApartmentPhotos();
+      updateSurveyRecordPanel(state.currentSurveyRecord ? 'edit' : 'new', state.currentSurveyRecord, {
+        photos: selectedApartmentPhotos(),
+        actions: selectedApartmentActions(),
+        history: selectedApartmentHistory()
+      });
+      toast('התמונה נמחקה');
+    } catch (e) {
+      showAlert('מחיקת תמונה נכשלה: ' + (e.message || e), 'error');
+    }
+  }
+
+  function removePhotoFromState(photoId) {
+    state.photos = (state.photos || []).filter(p => String(p.photoId) !== String(photoId));
   }
 
   function renderActions() {
@@ -976,7 +1022,7 @@ const App = (() => {
   function toast(msg){ const t=qs('#toast'); t.textContent=msg; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'), 2800); }
   function showAlert(msg, kind='info'){ const a=qs('#alertBox'); a.textContent=msg; a.className=`alert ${kind}`; setTimeout(()=>a.classList.add('hidden'), 8000); }
 
-  return { init, openSurvey, editAction, showSnapshot };
+  return { init, openSurvey, editAction, showSnapshot, deletePhotoConfirm };
 })();
 
 window.MamadApp = App;

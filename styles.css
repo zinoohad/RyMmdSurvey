@@ -781,3 +781,50 @@ textarea { min-height: 84px; resize: vertical; }
   border-radius: 16px;
   padding: 12px 14px;
 }
+
+/* ── v13: Delete uploaded photos ─────────────────────────────── */
+.photo-card-wrap,
+.inline-photo-wrap {
+  position: relative;
+}
+.photo-card-link,
+.inline-photo-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
+}
+.inline-photo-link {
+  gap: 0;
+}
+.photo-delete-btn {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.8);
+  background: rgba(17, 24, 39, .78);
+  color: #fff;
+  font-size: 20px;
+  line-height: 20px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.photo-delete-btn:hover {
+  background: #dc2626;
+  transform: scale(1.06);
+}
+.photo-delete-btn.inline {
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+}
