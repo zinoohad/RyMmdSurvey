@@ -1,4 +1,4 @@
-// v14: multi readiness + column strengthening support
+// v13: canonical field mapping + delete uploaded photos
 const App = (() => {
   const OPTIONS = {
     yesNo: ['', 'כן', 'לא'],
@@ -285,6 +285,9 @@ function syncAllMultiHiddenInputs() {
   function keyOf(b,u){ return `${String(b||'').trim()}-${String(u||'').trim()}`; }
   function countBy(arr, fn){ return arr.reduce((m,x)=>{ const k=fn(x); m[k]=(m[k]||0)+1; return m; },{}); }
 
+  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); renderHistory(); renderSelectedApartmentPhotos(); renderSelectedSurveyHistory(); }
+
+
   function splitMultiValue(value) {
     return String(value || '')
       .split(',')
@@ -292,28 +295,26 @@ function syncAllMultiHiddenInputs() {
       .filter(Boolean);
   }
 
-  function multiIncludes(value, option) {
+  function multiValueIncludes(value, option) {
+    if (!option) return true;
     return splitMultiValue(value).includes(option);
   }
 
-  function countRowsByMultiField(rows, field) {
+  function countByMultiValue(rows, field) {
     return rows.reduce((acc, row) => {
-      splitMultiValue(row[field]).forEach(value => {
-        acc[value] = (acc[value] || 0) + 1;
-      });
+      const values = splitMultiValue(row[field]);
+      values.forEach(v => { acc[v] = (acc[v] || 0) + 1; });
       return acc;
     }, {});
   }
-
-  function renderAll() { renderDashboard(); renderApartments(); renderPhotos(); renderActions(); renderHistory(); renderSelectedApartmentPhotos(); renderSelectedSurveyHistory(); }
 
   function renderDashboard() {
     const rows = state.dashboard;
     const total = rows.length;
     const completed = rows.filter(r => r.surveyStatus === 'הושלם').length;
-    const ready = rows.filter(r => multiIncludes(r.executionReadinessStatus, 'מוכן לביצוע')).length;
-    const conditional = rows.filter(r => multiIncludes(r.executionReadinessStatus, 'מוכן לביצוע בתנאים')).length;
-    const notReady = rows.filter(r => multiIncludes(r.executionReadinessStatus, 'לא מוכן לביצוע')).length;
+    const ready = rows.filter(r => multiValueIncludes(r.executionReadinessStatus, 'מוכן לביצוע')).length;
+    const conditional = rows.filter(r => multiValueIncludes(r.executionReadinessStatus, 'מוכן לביצוע בתנאים')).length;
+    const notReady = rows.filter(r => multiValueIncludes(r.executionReadinessStatus, 'לא מוכן לביצוע')).length;
     const first = rows.filter(r => r.readyForFirstPhase === 'מתאים').length;
     const openActions = state.actions.filter(a => a.status !== 'סגור').length;
     const photos = state.photos.length;
@@ -336,7 +337,7 @@ function syncAllMultiHiddenInputs() {
 
   function renderBarChart(selector, rows, field) {
     const counts = field === 'executionReadinessStatus'
-      ? countRowsByMultiField(rows, field)
+      ? countByMultiValue(rows, field)
       : countBy(rows.filter(r => r[field]), r => r[field]);
     const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
     const max = Math.max(1, ...entries.map(e=>e[1]));
@@ -352,7 +353,7 @@ function syncAllMultiHiddenInputs() {
     const first = qs('#filterFirstPhase').value;
     const rows = state.dashboard.filter(r => {
       const hay = [r.buildingNumber,r.unitNumber,r.area,r.residentName,r.surveyStatus,r.executionReadinessStatus,r.openBlockers].join(' ').toLowerCase();
-      return (!search || hay.includes(search)) && (!area || r.area === area) && (!readiness || multiIncludes(r.executionReadinessStatus, readiness)) && (!surveyStatus || r.surveyStatus === surveyStatus) && (!first || r.readyForFirstPhase === first);
+      return (!search || hay.includes(search)) && (!area || r.area === area) && (!readiness || multiValueIncludes(r.executionReadinessStatus, readiness)) && (!surveyStatus || r.surveyStatus === surveyStatus) && (!first || r.readyForFirstPhase === first);
     });
     qs('#dashboardCount').textContent = `${rows.length} רשומות`;
     renderTable('#dashboardTable', ['מבנה','דירה','אזור','דייר','סטטוס סקר','מוכנות','מורכבות','חסם מרכזי','פעימה 1','תמונות','משימות','פעולה'], rows.map(r => [
@@ -684,13 +685,18 @@ function syncAllMultiHiddenInputs() {
     const form = qs('#surveyForm');
     [...form.elements].forEach(el => {
       if (!el.name || ['buildingNumber','unitNumber','area','residentName'].includes(el.name)) return;
-      if (el.tagName === 'SELECT') el.value = '';
-      else if (el.type === 'file') el.value = '';
-      else el.value = '';
+      if (el.tagName === 'SELECT') {
+        el.value = el.name === 'columnStrengtheningRequired' ? 'לא נדרש' : '';
+      } else if (el.type === 'file') {
+        el.value = '';
+      } else if (el.type === 'checkbox') {
+        el.checked = false;
+      } else {
+        el.value = '';
+      }
     });
-    qsa('[data-multi-target]').forEach(cb => { cb.checked = false; });
+    setMultiFromHidden('executionReadinessStatusMulti', '');
     syncAllMultiHiddenInputs();
-    if (form.elements.columnStrengtheningRequired) form.elements.columnStrengtheningRequired.value = 'לא נדרש';
     qs('#photoPreview').innerHTML = '';
     qs('#saveStatus').textContent = '';
   }
@@ -835,10 +841,7 @@ function syncAllMultiHiddenInputs() {
       setFormElementValue(form.elements[fieldName], value);
     });
 
-    setMultiFromHidden('executionReadinessStatusMulti', normalized.executionReadinessStatus || '');
-    if (form.elements.columnStrengtheningRequired && !form.elements.columnStrengtheningRequired.value) {
-      form.elements.columnStrengtheningRequired.value = 'לא נדרש';
-    }
+    setMultiFromHidden('executionReadinessStatusMulti', normalized.executionReadinessStatus);
 
     state.currentSurveyRecord = normalized;
 
@@ -970,11 +973,10 @@ function syncAllMultiHiddenInputs() {
   }
 
   function clearSurveyForm() {
-    const form = qs('#surveyForm');
-    form.reset();
-    qsa('[data-multi-target]').forEach(cb => { cb.checked = false; });
-    syncAllMultiHiddenInputs();
-    if (form.elements.columnStrengtheningRequired) form.elements.columnStrengtheningRequired.value = 'לא נדרש';
+    qs('#surveyForm').reset();
+    setMultiFromHidden('executionReadinessStatusMulti', '');
+    const strengthening = qs('[name="columnStrengtheningRequired"]');
+    if (strengthening) strengthening.value = 'לא נדרש';
     qs('#photoPreview').innerHTML = '';
     qs('#saveStatus').textContent = '';
     state.currentSurveyRecord = null;
