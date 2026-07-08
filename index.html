@@ -216,6 +216,7 @@
                     <label>מזגנים / צנרת מזגן<select name="acStatus" data-options="infraStatus"></select></label>
                     <label>נדרש סקר תשתיות נוסף?<select name="infraSurveyRequired" data-options="yesNoCheck"></select></label>
                     <label>גורם נדרש לבדיקה<select name="infraOwner" data-options="owner"></select></label>
+                    <label>חיזוק עמודים<select name="columnStrengtheningRequired" data-options="columnStrengthening"></select></label>
                   </div>
                   <label>הערות תשתיות<textarea name="infrastructureNotes"></textarea></label>
                   <div class="step-photos" data-photo-section="infra">
@@ -268,7 +269,10 @@
                     <label>הערות דייר<textarea name="residentComments"></textarea></label>
                     <label>החלטת צוות לגבי ההערות<textarea name="residentCommentDecision"></textarea></label>
                     <label>מתאים לפעימה ראשונה?<select name="readyForFirstPhase" data-options="firstPhase"></select></label>
-                    <label>סטטוס מוכנות לביצוע<select name="executionReadinessStatus" data-options="readiness"></select></label>
+                    <label class="multi-field-label">סטטוס מוכנות לביצוע
+                      <input type="hidden" name="executionReadinessStatus" id="executionReadinessStatusInput" />
+                      <div class="checkbox-group multi-select-grid" data-multi-field="executionReadinessStatus" data-options="readiness"></div>
+                    </label>
                     <label>החלטה נדרשת על ידי<select name="decisionRequiredBy" data-options="decisionBy"></select></label>
                     <label>חסמים פתוחים<textarea name="openBlockers"></textarea></label>
                     <label>המלצת הסוקר<textarea name="surveyorRecommendation"></textarea></label>

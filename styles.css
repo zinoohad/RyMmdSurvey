@@ -828,3 +828,33 @@ textarea { min-height: 84px; resize: vertical; }
   height: 24px;
   font-size: 18px;
 }
+
+.field-block {
+  grid-column: span 1;
+}
+
+.multi-check-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  min-height: 42px;
+}
+
+.multi-check-item {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.multi-check-item input {
+  width: auto;
+  min-height: auto;
+}
